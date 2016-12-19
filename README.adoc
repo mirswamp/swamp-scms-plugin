@@ -1,0 +1,186 @@
+:plugin-ver: 0.6.0
+= SWAMP Version Control Systems Hook
+Jared Sweetland, Vamshi Basupalli, James A. Kupsch
+{plugin-ver} {docdatetime}
+:toc:
+:numbered:
+
+== Introduction
+
+Version control systems (VCM's) are designed to help manage code accross multiple versions, allowing you to safely fall back on other versions if anything happens to your code, or reference older versions to compare your code as it develops. This script is designed for Git and Subversion. Once installed, this script will cause any commit or push to upload your package to https://www.mir-swamp.org and run an assessment on it.
+
+== Prerequisites
+The usage of this plugin requires that you already have the following:
+
+- Git or Subversion is installed on your computer, as well as some repository to use
+- A valid SWAMP account. If you do not have an account, go to https://continuousassurance.org to register.
+
+== Installation
+To install the git hook, run the installer script using the following options:
+
+[width="80%",cols="1,3",options="header"]
+|==========================
+|Parameter | Description
+2+|*Select type of VCS System*
+|--git | Install the hook for git
+|--svn | Install the hook for SVN
+2+|*Select one or more of the folowing*
+|--commit | Installs the commit version of the script - commits will trigger uploading (default)
+|--push | Installs the push version of the script - receiving a push will trigger uploading (only allowed if using git)
+2+|*Optional*
+|--force | Overrides any existing files inside your .git/hooks directory on installation
+2+|*Miscellaneous Options*
+|--help | Prints a help menu to console, then exits
+|--version | Prints the version string of the installer, then exits
+|--print-projects | Prints out your available projects for use in the congifuration files (see below)
+|--print-platforms | Prints out all available platforms for use in the congifuration files (see below)
+|--print-tools | Prints out all available tools for use in the congifuration files (see below)
+|==========================
+
+== Configuring the Hook
+The SWAMP hook must be configured before use. This configuration can be modified by altering the following .config files:
+
+=== In SWAMP_Uploader/uploaderConfig.conf
+
+[width="80%",cols="1,3",options="header"]
+|==========================
+|Parameter | Description
+2+|*Assessment Options*
+|platform (-p) | The name of the platforms used in the assessment 
+For a full list of platforms, run
+`hooks/SWAMP_Uploader/swamp-java-api-client/scripts/run-main.sh platform -L` 
+Enter the platform names desired separated by commas (ex. platform=Red Hat Enterprise Linux 64-bit, Scientific Linux 64-bit,Centos Linux, etc.)
+|project | The name of the project that the package will be uploaded to 
+Use MyProject if you have not created a project of your own, as that is the default on the SWAMP
+|tool (-t) | The tool names used for the assessment 
+For a full list of tools, run
+`hooks/SWAMP_Uploader/swamp-java-api-client/scripts/run-main.sh tools -L` 
+Enter the tool names desired separated by commas (ex. tool=findbugs,errorprone, checkstyle, etc.)
+2+|*Runtime Options*
+|allowed-branches | Specify the branches that should be submitted to the SWAMP. 
+Specify multiply branches separated by commas (ex. allowed-branches=master,branch01, branch02) 
+If not specified, the default is to only allow the master branch.
+|assess | If `assess=0` is specified, no assessment will be run. 
+The package will still be uploaded, and if the new-package-dir option is specified, the package will still be stored in the specified directory.
+|new-package-dir | The directory to place the archived package and configuration file after the upload is complete. 
+If not specified, the package will be deleted after uploading.
+|run-all-commits | Specific to the receive hook 
+If `run-all-commits=1` is specified, all commits since the last push will be uploaded and assessed. 
+By default, this is disabled, and only the most recent commit will be uploaded and assessed.
+|upload | If you set `upload=0` in the configurations, no upload to the SWAMP will occur. 
+The script may still create a package for you if output-dir is specified. 
+If not, the program will exit without doing anything. Useful if you want to temporarily disable this script.
+2+|*File Directories*
+|config-file (-c) | The location of the configuration file for the hook. 
+If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/uploadConf.conf) 
+This can only be specified through a command, and unless modified in the hook, will always be the default.
+|credentials-file | The location of the credentials file for the hook. 
+If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/uploadCredentials.conf) 
+This can only be specified through a command, and unless modified in the hook, will always be the default.
+|log-file | The output location of the log file 
+If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/logFile.txt)
+|main-script | The location of the run-main.sh script from the swamp-java-api directory 
+This will be specified by the installer, and there is no need to change it.
+|package-conf | The location of the package.conf file from the repository. 
+If not specified, the default is ./package.conf
+|temp-dir | The location to store any temporary files needed for uploading the package. 
+These will be deleted after the process is over. 
+If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/.tempdir/)
+2+|*Miscellaneous Options*
+|help (-h) | Displays a help message detailing how to use the program and what options are available, then exits
+|print-platforms | Prints out all available platforms and then exits. Requires credentials to be entered.
+|print-projects | Prints out all available projects and then exits. Requires credentials to be entered.
+|print-tools | Prints out all available tools and then exits. Requires credentials to be entered.
+|verbose | Displays additional output to the console for updates on the program's progress.
+|version (-v) | Displays the version of the currently installed program, then exits
+|==========================
+
+=== In .git/hooks/SWAMP_Uploader/uploaderCredentials.conf
+
+[width="80%",cols="1,3",options="header"]
+|==========================
+|Parameter | Description
+|username | Enter the username to your SWAMP account
+|password | Enter the password to your SWAMP account
+|==========================
+
+Once you have these configurations in place, you can verify them with:
+
+[source,bash]
+----
+hooks/SWAMP_Uploader/uploadPackage.pl --verify
+----
+The program will verify your package is valid for submission without submitting anything to the SWAMP.
+
+=== The package.conf File
+
+There must be a package.conf file inside your git repository, location specified by the configuration file. +
+This file contains details on how the SWAMP should handle your package. +
+The format of each item is as follows: +
+`package-short-name=test` +
+Here is a full list of the valid options for configuration: +
+[width="80%",cols="1,3",options="header"]
+|==========================
+|Parameter | Desctiption
+|package-short-name | name of package
+|package-version | version string of package
+|package-dir | directory of package from repository
+|package-classpath | Java classpath to for bytecode assessments
+|package-auxclasspath | Java auxclasspath to for bytecode assessments
+|package-srcdir | Location of Java source code for bytecode assessments
+|package-language | COMPUTER LANGUAGE used to write pkg, separate by spaces
+|build-sys | type of build system (see below)
+|config-dir | Directory to run the config-command in relative to package-dir directory
+|config-cmd | Command to configure the package (derived from <build-sys> if not present)
+|config-opt | Configuration Options
+|build-dir | Relative directory from <dir> to change to before building, default '.'
+|build-file | Relative path from <build-dir> to the build file
+|build-cmd | Command to build the package (default derived from <build-sys>)
+|build-opt | Build Option
+|build-target | Build target
+|android-sdk-target | Android Target String
+|==========================
+.package-language can be any of these languages:
+-----
+C
+C++
+HTML
+Java
+JavaScript
+PHP
+Python
+Python-2
+Python-3
+Ruby
+-----
+.build-sys can be any of these systems:
+------
+android+ant
+android+ant+ivy
+android+gradle
+android+maven
+ant
+ant+ivy
+cmake+make
+configure+make
+gradle
+java-bytecode
+make
+maven
+no-build
+none
+other
+python-distutils
+------
+
+== Using the SWAMP Hook
+Depending on your configurations, your project will be automatically uploaded and assessed to the SWAMP after every commit / push.
+
+== Viewing the Results
+The SWAMP web site can be used to view results of your assessments:
+
+. Login to the SWAMP as normal.
+. Click _Results_
+. Click the checkbox next to the assessment results you would like to review
+. Click _View Assessment Results_ button
+

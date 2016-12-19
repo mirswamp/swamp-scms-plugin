@@ -1,0 +1,11 @@
+tool=checkstyle,error-prone,Findbugs,PMD
+project=MyProject
+platform=Red Hat Enterprise Linux 64-bit
+run-all-commits=1
+package-dir=./
+package-conf=./package.conf
+allowed-branches=master, branch01, branch02, branch03
+upload=1
+assess=1
+main-script=scripts/run-main.sh
+new-package-dir=./
