@@ -1,4 +1,4 @@
-:plugin-ver: 0.6.0
+:plugin-ver: 0.6.1
 = SWAMP Version Control Systems Hook
 Jared Sweetland, Vamshi Basupalli, James A. Kupsch
 {plugin-ver} {docdatetime}

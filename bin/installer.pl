@@ -111,7 +111,7 @@ EOF
 sub PrintVersion {
 	my $progname =  $0;
         $progname =~ s/.*[\\\/]//;
-	my $version = "0.1";
+	my $version = "0.6.1";
 	print STDERR "$progname\nVersion $version";
 }
 
