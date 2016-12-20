@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-#  uploadPackage.pl
+#  SWAMP SCMS Hooks
 #
 #  Copyright 2016 Jared Sweetland, Vamshi Basupalli, James A. Kupsch
 #
