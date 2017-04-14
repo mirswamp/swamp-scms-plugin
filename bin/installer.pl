@@ -55,7 +55,8 @@ sub ProcessOptions {
 	my $ok = GetOptions(\%options, @options);
 	
 	($options{prog_name},$options{prog_dir},$options{prog_ext}) = fileparse($0);
-	
+	$options{prog_dir} = substr ($options{prog_dir}, 0, length ($options{prog_dir}) - 4);
+
 	$options{repo} = $ARGV[0];
 
         if (!$ok || $options{help})  {
@@ -110,7 +111,7 @@ EOF
 sub PrintVersion {
 	my $progname =  $0;
         $progname =~ s/.*[\\\/]//;
-	my $version = "0.6.1";
+	my $version = "0.7.1";
 	print STDERR "$progname\nVersion $version";
 }
 
@@ -174,14 +175,18 @@ sub main {
 		File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$homedir/.SWAMPUploadCredentials.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template to home directory $homedir: $!");
 	}
 	File::Copy::copy "$options->{prog_dir}/bin/uploadPackage.pl", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy uploadPackage.pl: $!");
+	chmod 0755, "$options->{repo}/hooks/SWAMP_Uploader/uploadPackage.pl";
 	File::Copy::copy "$options->{prog_dir}/bin/$options->{jar_name}", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy $options->{jar_name}: $!");
 	File::Copy::copy "$options->{prog_dir}/bin/run-main.sh", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy run-main.sh: $!");
+	chmod 0755, "$options->{repo}/hooks/SWAMP_Uploader/run-main.sh";
 	if ($options->{git}){
 		if ($options->{post_commit}){
 			File::Copy::copy "$options->{prog_dir}/bin/post-commit.git", "$options->{repo}/hooks/post-commit" or ExitProgram($options, "Could not copy post-commit: $!");
+			chmod 0755, "$options->{repo}/hooks/post-commit";
 		}
 		if ($options->{post_receive}){
 			File::Copy::copy "$options->{prog_dir}/bin/post-recieve", "$options->{repo}/hooks/post-receive" or ExitProgram($options, "Could not copy post-receive: $!");
+			chmod 0755, "$options->{repo}/hooks/post-receive";
 		}
 	}else{
 		File::Copy::copy "$options->{prog_dir}/bin/post-commit.svn", "$options->{repo}/hooks/post-commit" or ExitProgram($options, "Could not copy post-commit: $!");

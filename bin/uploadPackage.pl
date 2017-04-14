@@ -579,7 +579,7 @@ EOF
 sub PrintVersion  {
 	my $options = $_[0];
 
-	print STDERR "$options->{progname} version 0.6.1\n";
+	print STDERR "$options->{progname} version 0.7.1\n";
 }
 
 #Login to the server
@@ -612,7 +612,7 @@ sub Login  {
 #    sleep 30;
 #print "done\n";
 
-	my $output = SwampCli($options, "login", "--filepath", "$filename");
+	my $output = SwampCli($options, "login", "--filepath", "$filename", "-S", "https://www.mir-swamp.org");
 	close $fh;
 	unless ($output){
 		unlink "$filename" or ExitProgram($options,"Could not remove temporary credentials file: $!\nLogin failed: Check your username and password.\n");
