@@ -38,7 +38,8 @@ To install the git hook, run the installer script using the following options:
 |==========================
 
 == Configuring the Hook
-The SWAMP hook must be configured before use. This configuration can be modified by altering the following .config files:
+The SWAMP hook must be configured before use. This configuration can be modified by altering the configuration files below. +
+If you are calling the script directly, you can set the values on the command line using `--opt-name`. The value in parentheses is the short command line option name.
 
 === In SWAMP_Uploader/uploaderConfig.conf
 
@@ -59,28 +60,29 @@ Enter the tool names desired separated by commas (ex. tool=findbugs,errorprone, 
 2+|*Runtime Options*
 |allowed-branches | Specify the branches that should be submitted to the SWAMP. 
 Specify multiply branches separated by commas (ex. allowed-branches=master,branch01, branch02) 
-If not specified, the default is to only allow the master branch.
+If not specified, the default is to only submit the master branch.
 |assess | If `assess=0` is specified, no assessment will be run. 
 The package will still be uploaded, and if the new-package-dir option is specified, the package will still be stored in the specified directory.
 |new-package-dir | The directory to place the archived package and configuration file after the upload is complete. 
 If not specified, the package will be deleted after uploading.
 |run-all-commits | Specific to the receive hook 
 If `run-all-commits=1` is specified, all commits since the last push will be uploaded and assessed. 
-By default, this is disabled, and only the most recent commit will be uploaded and assessed.
+By default, this is disabled, and only the current commit or push will be uploaded and assessed.
 |upload | If you set `upload=0` in the configurations, no upload to the SWAMP will occur. 
 The script may still create a package for you if output-dir is specified. 
 If not, the program will exit without doing anything. Useful if you want to temporarily disable this script.
 2+|*File Directories*
 |config-file (-c) | The location of the configuration file for the hook. 
 If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/uploadConf.conf) 
-This can only be specified through a command, and unless modified in the hook, will always be the default.
+This can only be specified if you are running the command from the command line (with --config-file). It cannot be specified elsewhere.
 |credentials-file | The location of the credentials file for the hook. 
-If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/uploadCredentials.conf) 
-This can only be specified through a command, and unless modified in the hook, will always be the default.
+If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/uploadCredentials.conf)
+This can only be specified if you are running the command from the command line (with --credentials-file). It cannot be specified in the configuration file.
 |log-file | The output location of the log file 
 If not specified, the default is in the same directory as uploadPackage.pl (hooks/SWAMP_Uploader/logFile.txt)
-|main-script | The location of the run-main.sh script from the swamp-java-api directory 
-This will be specified by the installer, and there is no need to change it.
+This is set by the installer and does not need to be modified.
+|cli_jar | The location of the java-cli jar from the git repository 
+This will be specified by the installer, and should not need to be modified.
 |package-conf | The location of the package.conf file from the repository. 
 If not specified, the default is ./package.conf
 |temp-dir | The location to store any temporary files needed for uploading the package. 

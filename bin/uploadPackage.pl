@@ -64,13 +64,14 @@ sub ProcessOptions  {
 			'run_all_commits'=> 0,
 			username	=> '',
 			password	=> '',
+			swamp_url	=> 'www.mir-swamp.org',
 			tool		=> '',
 			project		=> '',
 			platform	=> '',
 			'new_package_dir'=> '',
 			'temp_dir'	=> "$progdir/.tempdir",
 			'allowed_branches'=> 'master',
-			'main_script'	=> '..scripts/run-main.sh',
+			'cli_jar'       => '.git/hooks/SWAMP_Uploader/swamp-cli-jar-with-dependencies.jar',
 			'recover'	=> 0,
 			'verify'	=> 0,
 			'verbose'	=> 0
@@ -102,7 +103,7 @@ sub ProcessOptions  {
 			"new_package_dir|new-package-dir=s",
 			"temp_dir|temp-dir=s",
 			"allowed_branches|allowed-branches=s",
-			"main_script|main-script=s",
+			"cli_jar|cli-jar=s",
 			"recover|r",
 			"verify",
 			"verbose"
@@ -357,7 +358,7 @@ sub SafeExecute  {
 sub SwampCli {
 
 	my $options = shift @_;
-	my $output = SafeExecute("$options->{main_script}",@_);
+	my $output = SafeExecute("java","-jar","$options->{cli_jar}",@_);
 	return $output;
 
 }
@@ -413,10 +414,10 @@ sub verifyOptions  {
 		print STDERR "Please include a password=<password> to upload the project.\n";
 		$valid = 0;
 	}
-	unless (-e "$options->{main_script}")  {
-		print STDERR "SWAMP-api-client at $options->{main_script} not found.\n";
-		$valid = 0;
-	}
+	unless (-e "$options->{cli_jar}")  {
+                print STDERR "SWAMP-api-client at $options->{cli_jar} not found.\n";
+                $valid = 0;
+        }
 	if ($valid){
 		Login($options);
 		$options->{project} = SwampCli($options, "project", "-N", "$options->{project}");
@@ -579,7 +580,7 @@ EOF
 sub PrintVersion  {
 	my $options = $_[0];
 
-	print STDERR "$options->{progname} version 0.7.1\n";
+	print STDERR "$options->{progname} version 0.7.3\n";
 }
 
 #Login to the server
@@ -612,7 +613,7 @@ sub Login  {
 #    sleep 30;
 #print "done\n";
 
-	my $output = SwampCli($options, "login", "--filepath", "$filename", "-S", "https://www.mir-swamp.org");
+	my $output = SwampCli($options, "login", "--filepath", "$filename", "-S", "$options->{swamp_url}");
 	close $fh;
 	unless ($output){
 		unlink "$filename" or ExitProgram($options,"Could not remove temporary credentials file: $!\nLogin failed: Check your username and password.\n");
@@ -1033,7 +1034,7 @@ sub AccessCommits  {
 #            {repo_dir} - location of the svn workspace to delete temporary directory .archiveTemp/
 #            {archive_file} - location of the archive file to delete
 #            {'upload'} - whether a package was uploaded to determine if the user logged in
-#                    -if the user did log in, {swamp_api} and {main_script} to allow the user to log out
+#                    -if the user did log in, {cli_jar} to allow the user to log out
 #      - a message containing the exit error
 sub ExitProgram {
 

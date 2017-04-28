@@ -1,0 +1,36 @@
+:plugin-ver: 0.6.1
+= SWAMP Version Control Systems Hook
+Jared Sweetland, Vamshi Basupalli, James A. Kupsch
+{plugin-ver} {docdatetime}
+:toc:
+:numbered:
+
+== Developing the Hook
+Any issues outside of the hook (the installer, the config files, etc) should be done in their proper files
+
+All other issues will go in the bin/uploadPackage.pl file
+
+=== Issues with reading the configuration files
+This is done in the top function labeled ProcessOptions
+
+=== Issues with calling to the SWAMP-CLI
+This is done within the SwampCli function, which also calls SafeExecute
+
+=== Issues with logging in to the SWAMP
+This is done towards the bottom in the Login function
+
+=== Issues with placing the repository into a zip archive
+This is done within the MakeArchive function
+
+=== Issues with uploading the package to the SWAMP
+This is done in the UploadPackage function
+
+=== Issues with running the assessments in the SWAMP
+This is done in the AssessPackage function
+
+=== Issues with the recovery system (-r function)
+This is done at the bottom in the Recover function
+
+To test any changes made, you can replace the .git/hooks/SWAMP_Uploader/uploadPackage.pl with the newly editted uploadPackage.pl in your test git repository.
+
+Run `git commit -m "test" --allow-empty` if you would like to test the hook without needing to change your repository each time
