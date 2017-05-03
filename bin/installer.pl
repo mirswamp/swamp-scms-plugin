@@ -57,7 +57,11 @@ sub ProcessOptions {
 	($options{prog_name},$options{prog_dir},$options{prog_ext}) = fileparse($0);
 	$options{prog_dir} = substr ($options{prog_dir}, 0, length ($options{prog_dir}) - 4);
 
-	$options{repo} = $ARGV[0];
+	if ($options{prog_dir} eq ""){
+                $options{prog_dir} = ".";
+        }
+
+        $options{repo} = $ARGV[0];
 
         if (!$ok || $options{help})  {
                 PrintUsage();
@@ -70,15 +74,21 @@ sub ProcessOptions {
         }
 
 	if ($options{print_tools}){
-		system("$options{prog_dir}/bin/uploadPackage.pl --print_tools --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		#system("$options{prog_dir}/bin/uploadPackage.pl --print_tools --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "tools", "-list");
                 exit;
         }
         if ($options{print_platforms}){
-		system("$options{prog_dir}/bin/uploadPackage.pl --print_platforms --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		#system("$options{prog_dir}/bin/uploadPackage.pl --print_platforms --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "platform", "-list");
                 exit;
         }
         if ($options{print_projects}){
-		system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		#system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "project", "-list");
                 exit;
         }
 
@@ -177,8 +187,6 @@ sub main {
 	File::Copy::copy "$options->{prog_dir}/bin/uploadPackage.pl", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy uploadPackage.pl: $!");
 	chmod 0755, "$options->{repo}/hooks/SWAMP_Uploader/uploadPackage.pl";
 	File::Copy::copy "$options->{prog_dir}/bin/$options->{jar_name}", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy $options->{jar_name}: $!");
-	File::Copy::copy "$options->{prog_dir}/bin/run-main.sh", "$options->{repo}/hooks/SWAMP_Uploader/" or ExitProgram($options, "Could not copy run-main.sh: $!");
-	chmod 0755, "$options->{repo}/hooks/SWAMP_Uploader/run-main.sh";
 	if ($options->{git}){
 		if ($options->{post_commit}){
 			File::Copy::copy "$options->{prog_dir}/bin/post-commit.git", "$options->{repo}/hooks/post-commit" or ExitProgram($options, "Could not copy post-commit: $!");
