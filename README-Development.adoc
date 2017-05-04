@@ -5,6 +5,15 @@ Jared Sweetland, Vamshi Basupalli, James A. Kupsch
 :toc:
 :numbered:
 
+== How the hook functions
+Git runs any script labeled "post-commit" after any commit, and "post-recieve" after recieving any push.
+
+Subversion runs any script labeled "post-commit" after any commit.
+
+These scripts simply call the pearl script _uploadPackage.pl_ with the given parameters (i.e. the commit hash, the location of config files, etc.)
+
+The script _uploadPackage.pl_ does everything from zipping the commit to running the assessments. For an individual section of code, see the *Developing the Hook* section below.
+
 == Developing the Hook
 Any issues outside of the hook (the installer, the config files, etc) should be done in their proper files
 
@@ -31,6 +40,11 @@ This is done in the AssessPackage function
 === Issues with the recovery system (-r function)
 This is done at the bottom in the Recover function
 
+== Testing your changes
 To test any changes made, you can replace the .git/hooks/SWAMP_Uploader/uploadPackage.pl with the newly editted uploadPackage.pl in your test git repository.
 
 Run `git commit -m "test" --allow-empty` if you would like to test the hook without needing to change your repository each time
+
+Or, if you prefer, you can directly run the script within .git/hooks/SWAMP_Uploader/uploadPackage.pl using command options.
+
+You will need to specify --program='git' or --program='svn', and potentially the locations of the _swamp-cli-with-dependencies.jar_ file and the config files.

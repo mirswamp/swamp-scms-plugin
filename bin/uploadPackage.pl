@@ -580,7 +580,7 @@ EOF
 sub PrintVersion  {
 	my $options = $_[0];
 
-	print STDERR "$options->{progname} version 0.7.3\n";
+	print STDERR "$options->{progname} version 0.9.0\n";
 }
 
 #Login to the server

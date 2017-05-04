@@ -107,8 +107,8 @@ Installs the SWAMP api, hook, and README archives and places them in the directo
     options:
 	--help     	  -h print this message
 	--version  	  -v print version of $progname
-	--svn		  -s installs the SVN hook
-	--git		  -g installs the git hook
+	--svn		  -s specify an svn repository to install the hook
+	--git		  -g specify a git repository to install the hook
 	--print-tools     -t Displays the available tools to the console
 	--print-platforms -p Displays the available platforms to the console
 	--print-projects  -j Displays the available projects to the console
@@ -121,7 +121,7 @@ EOF
 sub PrintVersion {
 	my $progname =  $0;
         $progname =~ s/.*[\\\/]//;
-	my $version = "0.7.3";
+	my $version = "0.9.0";
 	print STDERR "$progname\nVersion $version";
 }
 
@@ -180,7 +180,7 @@ sub main {
 	}else{
 		mkdir "$options->{repo}/hooks/SWAMP_Uploader";
 		File::Copy::copy "$options->{prog_dir}/config/uploadConfig.template", "$options->{repo}/hooks/SWAMP_Uploader/uploadConfig.conf" or ExitProgram($options, "Could not copy uploadConfig.conf template: $!");
-		File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$options->{repo}/hooks/SWAMP_Uploader/uploadCredentails.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template: $!");
+		File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$options->{repo}/hooks/SWAMP_Uploader/uploadCredentials.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template: $!");
 		File::Copy::copy "$options->{prog_dir}/config/uploadConfig.template", "$homedir/.SWAMPUploadConfig.conf" or ExitProgram($options, "Could not copy uploadConfig.conf template to home directory $homedir: $!");
 		File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$homedir/.SWAMPUploadCredentials.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template to home directory $homedir: $!");
 	}
