@@ -29,6 +29,8 @@ use Digest::SHA;
 use Fcntl qw(:DEFAULT :mode :flock);
 use Data::Dumper;
 
+my $versionString = "0.9.1";
+
 my @packageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
 my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
 
@@ -580,7 +582,7 @@ EOF
 sub PrintVersion  {
 	my $options = $_[0];
 
-	print STDERR "$options->{progname} version 0.9.0\n";
+	print STDERR "$options->{progname} version $versionString\n";
 }
 
 #Login to the server

@@ -32,6 +32,8 @@ sub ProcessOptions {
 			print_tools	=> 0,
 			print_platforms	=> 0,
 			print_projects	=> 0,
+			print_packages	=> 0,
+			swamp_url	=> "http://mir-swamp.org/",
 			force		=> 0,
 			post_commit	=> 1,
 			post_receive	=> 0
@@ -45,6 +47,8 @@ sub ProcessOptions {
 			"print_tools|print-tools|t",
 			"print_platforms|print-platforms|p",
 			"print_projects|print-projects|j",
+			"print_packages|print-packages|k",
+			"swamp_url|swamp-url|u=s",
 			"force|f",
 			"post_commit|post-commit|commit|c",
 			"post_receive|post-receive|push|r"
@@ -69,28 +73,35 @@ sub ProcessOptions {
         }
 
         if ($options{version})  {
-                PrintVersion();
+                PrintVersion(\%options);
                 exit 0;
         }
 
 	if ($options{print_tools}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_tools --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-S", "$options{swamp_url}", "-C");
 		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "tools", "-list");
                 exit;
         }
         if ($options{print_platforms}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_platforms --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-S", "$options{swamp_url}", "-C");
 		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "platform", "-list");
                 exit;
         }
         if ($options{print_projects}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-S", "$options{swamp_url}", "-C");
 		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "project", "-list");
                 exit;
         }
+        if ($options{print_packages}){
+		#system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "login", "-S", "$options{swamp_url}", "-C");
+		system("java","-jar","$options{prog_dir}/bin/$options{jar_name}", "package", "-list");
+                exit;
+        }
+
 
 	return \%options;
 
@@ -112,6 +123,7 @@ Installs the SWAMP api, hook, and README archives and places them in the directo
 	--print-tools     -t Displays the available tools to the console
 	--print-platforms -p Displays the available platforms to the console
 	--print-projects  -j Displays the available projects to the console
+	--swamp-url	  -u specify a url for listing packages and updating config files
 	--force	  -f overrides any existing files inside your .git/hooks directory on installation
 	--post-commit	  -c installs the commit version of the script - commits will trigger uploading (implied with svn)
 	--post-receive	  -r installs the push version of the script - receiving a push will trigger uploading (git exclusive)
@@ -119,15 +131,17 @@ EOF
 }
 
 sub PrintVersion {
-	my $progname =  $0;
-        $progname =~ s/.*[\\\/]//;
-	my $version = "0.9.0";
-	print STDERR "$progname\nVersion $version";
+	#my $progname =  $0;
+        #$progname =~ s/.*[\\\/]//;
+	#my $version = "0.9.0";
+	#print STDERR "$progname\nVersion $version";
+	my $options = $_[0];
+	system("$options->{prog_dir}/bin/uploadPackage.pl","-v");
 }
 
 sub main {
 	my $options = ProcessOptions();
-	if ($options->{repo} eq ""){
+	if (exists $options->{repo} || $options->{repo} eq ""){
 		ExitProgram($options, "You must specify a valid repository.");
 	}elsif (-e "$options->{repo}/.git" && $options->{git}){
 		$options->{repo} = "$options->{repo}/.git";
