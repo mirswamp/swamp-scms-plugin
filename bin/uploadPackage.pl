@@ -561,21 +561,6 @@ Use full paths for any directories
        --recovery            enters recovery mode - checks log for any incomplete runs and completes them - does not submit anything if no recovery is needed
        --verify              validates package.conf file and uploadConfig.conf file without uploading or assessing the package
 
-You can specify allowed branches in the config file by adding allowed-branches=<branches separated by commas> - default = only the master branch
-
-A standard config file will be something like this:
-
-   username=steve
-   password=password123
-   tool=163f2b01-156e-11e3-a239-001a4a81450b
-   project=9cf9652b-29aa-11e6-a8c0-001a4a814505
-   platform=48f9a9b0-976f-11e4-829b-001a4a81450b
-   run-all-commits=1
-   allowed-branches=master,branch01,branch02,branch03
-   main-script=scripts/run-main.sh
-   new-package-dir=./
-   #Comments are ignored
-
 EOF
 }
 

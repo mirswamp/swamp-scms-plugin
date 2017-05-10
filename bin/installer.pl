@@ -184,12 +184,14 @@ sub main {
 		}
 		unless (-e "$options->{repo}/hooks/SWAMP_Uploader/uploadCredentials.conf"){
 			File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$options->{repo}/hooks/SWAMP_Uploader/uploadCredentials.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template: $!");
+			chmod 0600, "$options->{repo}/hooks/SWAMP_Uploader/uploadCredentials.conf";
 		}
 		unless (-e "$homedir/.SWAMPUploadConfig.conf"){
 			File::Copy::copy "$options->{prog_dir}/config/uploadConfig.template", "$homedir/.SWAMPUploadConfig.conf" or ExitProgram($options, "Could not copy uploadConfig.conf template to home directory $homedir: $!");
 		}
 		unless (-e "$homedir/.SWAMPUploadCredentials.conf"){
 			File::Copy::copy "$options->{prog_dir}/config/uploadCredentials.template", "$homedir/.SWAMPUploadCredentials.conf" or ExitProgram($options, "Could not copy uploadCredentials.conf template to home directory $homedir: $!");
+			chmod 0600, "$homedir/.SWAMPUploadCredentials.conf";
 		}
 	}else{
 		mkdir "$options->{repo}/hooks/SWAMP_Uploader";

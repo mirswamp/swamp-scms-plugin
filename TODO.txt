@@ -1,0 +1,13 @@
+Swamp SCM Plugin TODO:
+
+High Priority:
+Don't replace post-commit / post-recieve if they already exist, even with the --force flag
+
+Medium Priority:
+Add an "All Tools" option to the configuration
+Make a "Usage" option different from "Help"
+Format the help option to fit in 80 columns
+
+Low Priority:
+Install / update multiple git repositories rather than one at a time
+Add some sample package.conf files to the README's
