@@ -2,7 +2,8 @@
 
 #  SWAMP SCMS Hooks
 #
-#  Copyright 2016 Jared Sweetland, Vamshi Basupalli, James A. Kupsch
+#  Copyright 2016-2017	Jared Sweetland, Vamshi Basupalli,
+#  			James A. Kupsch, Josef "Bolo" Burger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@ use Archive::Extract;
 use Archive::Tar;
 use File::Path;
 use File::Copy;
+use File::Basename;
 use Getopt::Long qw(GetOptionsFromString);
 use File::Temp;
 use Digest::MD5;
@@ -34,6 +36,27 @@ my $versionString = "0.9.1";
 my @packageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
 my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
 
+## map old-style platform names to new ones to ease the transition
+my %old_platform_names = (
+	'Android'			=>	'android-ubuntu-12.04-64',
+	'CentOS Linux 5 64-bit'		=>	'centos-5-64',
+	'CentOS Linux 5 32-bit'		=>	'centos-5-32',
+	'CentOS Linux 6 64-bit'		=>	'centos-6-64',
+	'CentOS Linux 6 32-bit'		=>	'centos-6-32',
+	'Debian Linux'			=>	'debian-8-64',
+	'Fedora Linux'			=>	'fedora-24-64',
+	'Scientific Linux 5 64-bit'	=>	'scientific-5-64',
+	'Scientific Linux 5 32-bit'	=>	'scientific-5-32',
+	'Scientific Linux 6 64-bit'	=>	'scientific-6-64',
+	'Scientific Linux 6 32-bit'	=>	'scientific-6-32',
+	'Ubuntu Linux'			=>	'ubuntu-16.04-64',
+);
+
+## too painful to propogate $options everywhere.
+my $trace_exec = 0;		## trace execution of commands
+my $logged_in = 0;		## login succeeded .. could be in options,
+				## but isn't an option.
+
 #Process the user's options and config file
 #Returns a pointer to a hash with the options provided
 sub ProcessOptions  {
@@ -45,6 +68,8 @@ sub ProcessOptions  {
 	$progdir =~ s/[^\\^\/]+$//;
 
 	my $homedir = glob('~');
+
+#	print STDERR "---\nprogname $progname\nprogdir $progdir\nhomedir $homedir\n----\n";
 
 	my %optionDefaults = (
 			help		=> 0,
@@ -76,15 +101,17 @@ sub ProcessOptions  {
 			'cli_jar'       => '.git/hooks/SWAMP_Uploader/swamp-cli-jar-with-dependencies.jar',
 			'recover'	=> 0,
 			'verify'	=> 0,
-			'verbose'	=> 0
+			'verbose'	=> 0,
+			'trace'		=> 0,
 			);
 
 	my @options = (
 			"help|h",
 			"version|v",
-			"print_tools|print-tools",
-			"print_platforms|print-platforms",
-			"print_projects|print-projects",
+			"print_tools|print-tools|list-tools",
+			"print_platforms|print-platforms|list-platforms",
+			"print_projects|print-projects|list-projects",
+			"print_packages|print-packages|list-packages",
 			"config_file|config-file|c=s",
 			"global_config|global-config=s",
 			"credentials_file|credentials-file=s",
@@ -107,8 +134,11 @@ sub ProcessOptions  {
 			"allowed_branches|allowed-branches=s",
 			"cli_jar|cli-jar=s",
 			"recover|r",
-			"verify",
-			"verbose"
+			"verify",			## config files vs swamp
+			"verbose",
+			"trace",			## executiont trace
+			"old_cli|old-cli",		## USERNAME vs username
+			"JAVA_HOME|java-home",		## java version
 				);
 
 	# Configure file options, will be read in this order
@@ -121,9 +151,26 @@ sub ProcessOptions  {
 
 	my %options = %optionDefaults;
 	my %optSet;
+#	printf STDERR "cred1 $options{credentials_file}\n";
 	while (my ($k, $v) = each %getoptOptions)  {
+#		print STDERR "CMD $k == $v\n";
+
 		$options{$k} = $v;
 		$optSet{$k} = 1;
+	}
+
+	## allow dir-relative names for credentials & config
+	### this doesn't work because it is evaluated too late ???
+	if (0) {
+		if ( $options{credentials_file} ) {
+			my $t = $options{credentials_file};
+			printf STDERR "cred $t\n";
+			if ( $t !~ m{^\/} ) {
+				printf STDERR "starts / $t\n";
+				$t = "$progdir/$t";
+				$options{credentials_file} = $t;
+			}
+		}
 	}
 
 	my @errs;
@@ -160,6 +207,10 @@ sub ProcessOptions  {
 	$options{progdir} = $progdir;
 	$options{homedir} = $homedir;
 
+	## allow execution tracing from options as early as possible
+	$trace_exec = $options{trace};
+
+
 	if (!$ok || $options{help})  {
 		PrintUsage(\%options);
 		exit !$ok;
@@ -175,6 +226,28 @@ sub ProcessOptions  {
 		exit 0;
 	}
 
+	## if java is configured, configure it before using API
+	if (defined($options{JAVA_HOME}) && length($options{JAVA_HOME})) {
+		my $java_home = $options{JAVA_HOME};
+		my $java_bin = "$java_home/bin";
+		my $java = "$java_bin/java";
+		unless ( -d $java_home ) {
+			print STDERR "$0: $java_home: JAVA_HOME directory missing.\n";
+			print STDERR "$0: FATAL ERROR, can not continue.\n";
+			exit 1;
+		}
+		unless ( -e $java  &&  -x $java ) {
+			print STDERR "$0: $java: JAVA_HOME java missing or not executable.\n";
+			print STDERR "$0: FATAL ERROR, can not continue.\n";
+			exit 1;
+		}
+
+		$ENV{PATH} = "${java_home}:$ENV{PATH}";
+		$ENV{JAVA_HOME} = $java_home;
+#		system("echo ---- ; printenv | egrep 'PATH=|JAVA_HOME=|GIT|PWD=' ; echo ---");
+	}
+
+
 	if (@errs)  {
 	        print STDERR "$0: options Errors:\n    ", join ("\n    ", @errs), "\n";
         	exit 1;
@@ -188,8 +261,15 @@ sub ProcessOptions  {
 	verifyOptions(\%options);
 
 	if ($options{verify}){
-		print STDERR "No errors found in configuration.\n";
-                exit 0;
+		my $n = $options{config_errs};
+		my $err = 1;
+		if ($n eq 0) {
+			$n = "No";
+			$err = 0;
+
+		}
+		print STDERR "$n error(s) found in configuration.\n";
+                exit $err;
 	}
 
 	return \%options;
@@ -207,9 +287,10 @@ sub InitializeLog  {
 		$options->{log_id} = "$options->{commit_info}-".localtime(time);
 	}
 	$options->{lock_filename} = $options->{log_id};
-	$options->{lock_fh} = LockAcquire("$options->{progdir}/$options->{lock_filename}",$recovery);
+	# $options->{lock_fh} = LockAcquire("$options->{progdir}/$options->{lock_filename}",$recovery);
+	LockAcquire($options, $recovery);
 
-	if ($options->{lock_fh}){
+	if ($options->{lock_fh}) {
 #		if (-e $options->{log_file}){
 #			unlink $options->{log_file};
 #		}
@@ -290,15 +371,22 @@ sub CloseLog  {
 	my $outputFile = $options->{log_out};
 	close $outputFile or die "Could not close log: $!\n";
 
-	LockRelease($options->{lock_fh},"$options->{progdir}/$options->{lock_filename}");
+	# LockRelease($options->{lock_fh},"$options->{progdir}/$options->{lock_filename}");
+	LockRelease($options);
 
 }
 
 sub LockAcquire
 {
-	my ($lockFile, $nonBlock) = @_;
+	my $options = $_[0];
+	my $nonBlock = $_[1];
+#	my ($options, $nonBlock) = @_;
+
+#use Data::Dumper;
+#print Dumper($options);
 
 	my $fh;
+	my $lockFile = "$options->{progdir}/$options->{lock_filename}";
 
 	my $r = sysopen($fh, $lockFile, O_CREAT | O_WRONLY);
 	if (!$r)  {
@@ -319,28 +407,63 @@ sub LockAcquire
 		die "flock $lockFile, LOCK_EX: $!";
 	}
 
+	$options->{lock_fh} = $fh;
+	$options->{locked} = 1;
+
 	return $fh;
 }
 
 
 sub LockRelease
 {
-	my ($fh, $lockFile) = @_;
+	my $options = $_[0];
+
+#use Data::Dumper;
+#print Dumper($options);
+	my $fh = $options->{lock_fh};
+
+	## a lock was never setup in the first place
+	unless (defined($options->{lock_filename}) && length($options->{lock_filename})) {
+		return;
+	}
+
+	my $lockFile = "$options->{progdir}/$options->{lock_filename}";
+
+	## we have a lock that is unlocked elsewhere
+	if (!$options->{locked}) {
+		return;
+	}
 
 	if (defined $lockFile)  {
 		unlink $lockFile or die "unlink $lockFile: $!";
 	}
 	flock($fh, LOCK_UN) or die "flock $lockFile, LOCK_UN: $!";
 	close $fh or die "close $lockFile: $!";
+
+	$options->{locked} = 0;
+	$options->{lock_fh} = 0;	## XXX invalid fh
 }
 
 #Executes a command safely through the use of arrays
 #And returns the STDOUT from that command
 #Input - an array containing the commands / options to be executed (in order)
 #Output - the output produced by the program (or 0 if an error ocurred)
+
+# The input array may contain 'undef' elements, which are removed
+# before execution begins.
+
+
 sub SafeExecute  {
 
 	my $fh_exec;
+
+	## remove undefs (from project missing)
+	@_ = grep defined, @_;
+
+	if ($trace_exec) {
+		print "EXEC START : ", "@_", "\n";
+	}
+
 	open $fh_exec, "-|", @_;
 	my $output = "";
 	while (<$fh_exec>)  {
@@ -348,7 +471,13 @@ sub SafeExecute  {
 	}
 	close $fh_exec;
 	if ($?){
+		if ($trace_exec) {
+			printf("EXEC err %d : \"%s\"\n", $?, $output);
+		}
 		return 0;
+	}
+	if ($trace_exec) {
+		printf("EXEC ok %d : \"%s\"\n", $?, $output);
 	}
 	if ($output eq ""){
 		return " ";
@@ -371,16 +500,25 @@ sub verifyOptions  {
 
 	my $options = $_[0];
 
+	$options->{config_errs} = 0;
+
+	## query_only == querying SWAMP for config data, no running or changing
+	$options->{query_only} = ($options->{print_tools} || $options->{print_platforms} || $options->{print_projects} || $options->{print_packages} || $options->{verify} );
+
 	my $valid = 1;
-	unless ($options->{verify}){
+#	unless ($options->{verify}){
+	{
 		if (-e $options->{credentials_file}){
 			my $mode = (stat($options->{credentials_file}))[2] & 07777;
-			unless ($mode == 384){
-				PrintToLog($options,1,"File permissions for credentials file highly encouraged to be 600 (owner read/write only)\n");
+			unless ($mode == 0600){
+				PrintToLog($options,1,"File permissions for credentials file highly encouraged to be 0600 (owner read/write only)\n");
+				$options->{config_errs}++;
 			}
 		}else{
 			print STDERR "Credentials file at $options->{credentials_file} not found.";
+			$options->{config_errs}++;
 			$valid = 0;
+			$valid = $options->{query_only} ? 1 : 0;
 		}
 
 #use Data::Dumper;
@@ -403,45 +541,80 @@ sub verifyOptions  {
 		}
 	}
 	unless ($options->{verify} || $options->{program} eq 'git' || $options->{program} eq 'svn')  {
-		unless ($options->{print_tools} || $options->{print_platforms} || $options->{print_projects}){
+		unless ($options->{print_tools} || $options->{print_platforms} || $options->{print_projects} || $options->{print_packages} ){
 			print STDERR "You must specify if you are using SVN or git by adding the option --program svn or --program git\n";
 			$valid = 0;
 		}
 	}
 	if ($options->{username} eq '')  {
 		print STDERR "Please include a username=<username> to upload the project.\n";
+		$options->{config_errs}++;
 		$valid = 0;
 	}
 	if ($options->{password} eq '')  {
 		print STDERR "Please include a password=<password> to upload the project.\n";
+		$options->{config_errs}++;
 		$valid = 0;
 	}
 	unless (-e "$options->{cli_jar}")  {
                 print STDERR "SWAMP-api-client at $options->{cli_jar} not found.\n";
+		$options->{config_errs}++;
                 $valid = 0;
         }
-	if ($valid){
-		Login($options);
-		$options->{project} = SwampCli($options, "project", "-N", "$options->{project}");
-		$options->{project} =~ s/^\s+|\s+$//g;
-		if (length $options->{project} != 36)  {
-			print STDERR "Project not found: UUID $options->{project} invalid\n";
+	if ($valid) {
+		my $ok = Login($options);
+		if (! $ok) {
+			$options->{config_errs}++;
 			$valid = 0;
+		}
+		## XXX login failure always fatal, everything else needs
+		### to query the SWAMP.
+	}
+	if ($valid) {
+		if (defined($options->{project}) && length($options->{project})) {
+			$options->{project_id} = SwampCli($options, "project", "-N", "$options->{project}");
+			$options->{project_id} =~ s/^\s+|\s+$//g;
+			## XXX need to match a uuid, 36 character project names exist
+			if (length $options->{project_id} != 36)  {
+				print STDERR "Project $options->{project} not found: UUID $options->{project_id} invalid\n";
+				$options->{project_id} = undef;
+				$options->{project_arg} = undef;
+				$options->{config_errs}++;
+				$valid = $options->{query_only} ? 1 : 0;
+			}
+			else {
+				$options->{project_arg} = "-P";
+			}
+		}
+		else {
+			print STDERR "Please include a project=<project> to upload the project and access per-project tools.\n";
+			$options->{project_id} = undef;
+			$options->{project_arg} = undef;
+			$options->{config_errs}++;
+			$valid = $options->{query_only} ? 1 : 0;
 		}
 	}
 	if ($valid){
 		if ($options->{print_tools}){
-			print STDERR SwampCli($options, "tools", "-L");
+			## XXX this is wrong, if a project is selected the tools
+			## can be different, but there is no way to process this
+			## at current time.
+			print SwampCli($options, "tools", "-L");
 			print "\n";
 			exit;
 		}
 		if ($options->{print_platforms}){
-			print STDERR SwampCli($options, "platform", "-L");
+			print SwampCli($options, "platform", "-L");
 			print "\n";
 			exit;
 		}
 		if ($options->{print_projects}){
-			print STDERR SwampCli($options, "project", "-L");
+			print SwampCli($options, "project", "-L");
+			print "\n";
+			exit;
+		}
+		if ($options->{print_packages}){
+			print SwampCli($options, "package", "-L");
 			print "\n";
 			exit;
 		}
@@ -450,48 +623,95 @@ sub verifyOptions  {
 		if ($options->{assess}){
 			my @toolNames = split(/\s*,\s*/,$options->{tool});
 			my @toolUUIDs;
+			my $bad = 0;
 			foreach my $nextTool (@toolNames)  {
-				my $nextUUID = SwampCli($options, "tools", "-P", "$options->{project}", "-N", "$nextTool");
+				my $nextUUID = SwampCli($options, "tools", $options->{project_arg}, $options->{project_id}, "-N", "$nextTool");
 				$nextUUID =~ s/^\s+|\s+$//g;
 				if (length $nextUUID == 36)  {
 					push @toolUUIDs, $nextUUID;
 				}else{
 					print STDERR "Tool $nextTool not found: UUID $nextUUID invalid\n";
+					$bad++;
+					$options->{config_errs}++;
 					$valid = 0;
+					$valid = $options->{verify} ? 1 : 0;
 				}
 			}
 			$options->{tool} = join ',', @toolUUIDs;
+
+			# don't complain more if we already have errors
+			unless ( $bad || length($options->{tool}) ) {
+				print STDERR "No tool(s) selected\n";
+				$options->{config_errs}++;
+				$valid = 0;
+				$valid = $options->{verify} ? 1 : 0;
+			}
 		}
 		if ($options->{assess})  {
 			my @platformNames = split(/\s*,\s*/,$options->{platform});
 			my @platformUUIDs;
+			my $bad = 0;
 			foreach my $nextPlatform (@platformNames)  {
+				my $new_name;
+				if ($new_name = $old_platform_names{$nextPlatform}) {
+					printf STDERR "Warning: old platform \"$nextPlatform\" updated to \"$new_name\"\n";
+					$nextPlatform = $new_name;
+					$options->{config_errs}++;
+					## it is a config error, but not
+					## fatal unless the mapped platform
+					## doesn't exist.
+				}
 				my $nextUUID = SwampCli($options, "platform", "-N", "$nextPlatform");
 				$nextUUID =~ s/^\s+|\s+$//g;
 				if (length $nextUUID == 36)  {
 					push @platformUUIDs, $nextUUID;
 				}else{
 					print STDERR "Platform $nextPlatform not found: UUID $nextUUID invalid\n";
+					$bad++;
+					$options->{config_errs}++;
 					$valid = 0;
+					$valid = $options->{verify} ? 1 : 0;
 				}
 			}
 			$options->{platform} = join ',', @platformUUIDs;
+
+			# don't complain more if we already have errors
+			unless ( $bad || length($options->{platform}) ) {
+				print STDERR "No platform(s) selected\n";
+				$options->{config_errs}++;
+				$valid = 0;
+				$valid = $options->{verify} ? 1 : 0;
+			}
 		}
 	}
 	if (-e $options->{package_conf}){
 		my $packageConf = ReadConfFile($options->{package_conf});
+		if (!(exists $packageConf->{'package-dir'}) || $packageConf->{'package-short-name'} eq "") {
+			print STDERR "Please specify a package-dir in $options->{package_conf}.\n";
+			print STDERR "\tpackage-dir=.  is a good choice in the typical case.\n";
+			print STDERR "\tThis warning is a work-around for a bug in the SWAMP.\n\tNot handling missing package-dir elements.\n\tOnce the SWAMP issue is fixed, this warning will be eliminated.\n";
+			$options->{config_errs}++;
+	                $valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
+		}
 		if (!(exists $packageConf->{'package-short-name'}) || $packageConf->{'package-short-name'} eq ""){
 			print STDERR "Please specify a package-short-name= in $options->{package_conf}.\n";
+			$options->{config_errs}++;
 	                $valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
 		}
 		if (!(exists $packageConf->{'package-language'}) || $packageConf->{'package-language'} eq ""){
 			print STDERR "Please specify a valid language in $options->{package_conf}.\n";
+			$options->{config_errs}++;
 			$valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
 		}else{
 			my %params = map { $_ => 1 } @packageLanguages;
 			unless (exists($params{$packageConf->{'package-language'}})){
 				print STDERR "Package language \"$packageConf->{'package-language'}\" is invalid. Please verify you have a valid language in $options->{package_conf}.\n";
+				$options->{config_errs}++;
 	                        $valid = 0;
+				$valid = $options->{verify} ? 1 : 0;
 			}
 		}
 		if (!(exists $packageConf->{'build-sys'}) || $packageConf->{'build-sys'} eq ""){
@@ -501,16 +721,53 @@ sub verifyOptions  {
 			my %params = map { $_ => 1 } @buildSystems;
 			unless (exists $params{$packageConf->{'build-sys'}}){
 				print STDERR "Build system \"$packageConf->{'build-sys'}\" is invalid. Please verify you have a valid build system in $options->{package_conf}.\n";
+				$options->{config_errs}++;
 	                        $valid = 0;
+				$valid = $options->{verify} ? 1 : 0;
 			}
 		}
+		## missing build-dir means that build-dir == '.' in the swamp
+		if ( ! exists $packageConf->{'build-dir'} ) {
+			$packageConf->{'build-dir'} = ".";
+			if (0) {
+                        print STDERR "Please specify a build-dir in $options->{package_conf}\n";
+			$options->{config_errs}++;
+			$valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
+			}
+		}
+		elsif ( ! -d $packageConf->{'build-dir'} ) {
+			print STDERR "Build dir \"$packageConf->{'build-dir'}\" is invalid. Please verify you have a valid build directory in $options->{package_conf}.\n";
+			$options->{config_errs}++;
+			$valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
+		}
+		## this checking is delayed (else) because missing build-dir
+		## causes perl errors here.
 		if (exists $packageConf->{'build-file'} and !(-e "$packageConf->{'build-dir'}/$packageConf->{'build-file'}")){
-                        print STDERR "Build file $packageConf->{'build-dir'}/$packageConf->{'build-file'} not found.\n";
-                        $valid = 0;
-                }
+			print STDERR "Build file $packageConf->{'build-dir'}/$packageConf->{'build-file'} not found.\n";
+			$options->{config_errs}++;
+			$valid = 0;
+			$valid = $options->{verify} ? 1 : 0;
+		}
 	}else{
 		print STDERR "$options->{package_conf} does not exist.\n";
+		$options->{config_errs}++;
 		$valid = 0;
+		$valid = $options->{verify} ? 1 : 0;
+	}
+	if (exists $options->{new_package_dir}) {
+		my $d = "$options->{temp_dir}/$options->{new_package_dir}";
+		if (! -d $d) {
+			if (-e $d) {
+				print STDERR "new_package_dir ${d} in is not a directory.\n";
+				$options->{config_errs}++;
+				$valid = $options->{verify} ? 1 : 0;
+			}
+			elsif ($options->{verify}) {
+				print STDERR "new_package_dir ${d} does not exist, will be created on demand.\n";
+			}
+		}
 	}
 	unless ($valid)  {
 		unless ($options->{verify}){
@@ -593,7 +850,13 @@ sub Login  {
 	}
 
 #Permissions for File::Temp ar automally set to read/write user only
-	print $fh "USERNAME=$options->{username}\nPASSWORD=$options->{password}\n";
+	my $username = "username";
+	my $password = "password";
+	if ($options->{old_cli}) {
+		$username = "USERNAME";
+		$password = "PASSWORD";
+	}
+	print $fh "$username=$options->{username}\n$password=$options->{password}\n";
 	flush ($fh);
 
 #print "sleeping\n";
@@ -603,9 +866,11 @@ sub Login  {
 	my $output = SwampCli($options, "login", "--filepath", "$filename", "-S", "$options->{swamp_url}");
 	close $fh;
 	unless ($output){
+		$logged_in = 0;
 		unlink "$filename" or ExitProgram($options,"Could not remove temporary credentials file: $!\nLogin failed: Check your username and password.\n");
 		ExitProgram($options,"Login failed: Check your username and password. $!\n");
 	}
+	$logged_in = 1;
 	unlink "$filename" or ExitProgram($options,"Could not remove temporary credentials file: $!\n");
 
 }
@@ -618,6 +883,11 @@ sub Login  {
 #    the option to assess the package {assess}
 #    the tool id for the assessment {tool}
 #    the platform for the assessment {platform} [optional]
+
+# Segueing to new system where those are the NAMES, and xxx_id is the
+# uuid associated with those name[s].   This way info about things is
+# not lost in the uuid mapping.  zB: project, project_id
+
 sub UploadPackage  {
 
 	my $options = $_[0];
@@ -628,7 +898,7 @@ sub UploadPackage  {
 #sleep 5;
 #print "Awake\n";
 
-	my $packageID = SwampCli($options, "package", "--quiet", "--pkg-archive", $options->{archive_file}, "--pkg-conf", $options->{conf_file}, "--project-uuid", $options->{project});
+	my $packageID = SwampCli($options, "package", "--quiet", "--pkg-archive", $options->{archive_file}, "--pkg-conf", $options->{conf_file}, "--project-uuid", $options->{project_id});
 
 #print "Sleeping after package was uploaded\n";
 #sleep 5;
@@ -663,7 +933,7 @@ sub AssessPackage {
 #sleep 5;
 #print "Awake\n";
 
-				$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project'}, "--tool-uuid", $nextTool);
+				$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $nextTool);
 
 				if (!$assessResults){
 					ExitProgram($options,"Assessment failed! $!\n");
@@ -711,7 +981,7 @@ sub AssessOnPlatforms {
 #sleep 5;
 #print "Awake\n";
 
-		$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project'}, "--tool-uuid", $toolID, "--platform-uuid", $nextPlatform);
+		$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $toolID, "--platform-uuid", $nextPlatform);
 
 		if (!$assessResults){
 			ExitProgram($options,"Assessment failed! $!\n");
@@ -928,8 +1198,9 @@ sub MakeArchive {
 		my $packageConf = ReadConfFile($options->{conf_file});
 		$options->{package_name} = $packageConf->{'package-short-name'};
 		$options->{package_version} = $packageConf->{'package-version'};
-		rename "$options->{archive_file}","$options->{temp_dir}/$options->{package_name}-$options->{package_version}.tar";
-		$options->{archive_file} = "$options->{temp_dir}/$options->{package_name}-$options->{package_version}.tar";
+		my $new_archive = "$options->{temp_dir}/$options->{package_name}-$options->{package_version}.tar";
+		rename "$options->{archive_file}", $new_archive;
+		$options->{archive_file} = $new_archive;
 
 	}elsif ($options->{program} eq "svn"){
 
@@ -964,21 +1235,66 @@ sub MakeArchive {
 #     {package-version} Version of the package
 #     {archive-file} Location of the archive file to be deleted
 #     {config-file} Location of the config file to be deleted
+
 sub RemoveTempPackage {
 	my $options = $_[0];
+
 #Move the archive and package.conf file into one spot if desired
+
+#	print STDERR "op conf_file $options->{conf_file}\n";
+#	print STDERR "op archive_file $options->{archive_file}\n";
+#	print STDERR "op package_name $options->{package_name}\n";
+#	print STDERR "op package_version $options->{package_version}\n";
+#	print STDERR "op temp_dir $options->{temp_dir}\n";
+#	print STDERR "op new_package_dir $options->{new_package_dir}\n";
+
+	my $temp_dir		= $options->{temp_dir};
+	## conf & archive file are already "full" pathnames
+	my $conf_file		= "$options->{conf_file}";
+	my $archive_file 	= "$options->{archive_file}";
+
+	## XXX this check is wrong, should be for new_package_dir configured,
+	## and if it exists.   If it is configured and doesn't exist, then
+	## there is a problem (that is handled in the else stanza with an
+	## error message there after normal no new_package_dir handling
+	## is done
+
 	if (-e $options->{new_package_dir})  {
-		PrintToLog($options,0,"Creating package at $options->{temp_dir}/$options->{new_package_dir}/$options->{package_name}-$options->{package_version}\n");
-		mkdir "$options->{new_package_dir}/$options->{package_name}-$options->{package_version}" or print STDERR "Could not create a new package: $!\n";
-		move ("$options->{temp_dir}/$options->{archive_file}","$options->{new_package_dir}/$options->{package_name}-$options->{package_version}/");
-		move ("$options->{temp_dir}/$options->{conf_file}","$options->{new_package_dir}}$options->{package_name}-$options->{package_version}/package.conf");
-		$options->{archive_file} = "$options->{new_package_dir}/$options->{package_name}-$options->{package_version}/$options->{package_name}-$options->{package_version}.tar";
-		$options->{conf_file} = "$options->{new_package_dir}/$options->{package_name}-$options->{package_version}/package.conf";
+		my $npd = $options->{new_package_dir};
+
+		### horrible coupling, because multiple places "know" what names
+		### look like (package-version.tar etc.  Ouch
+		my $new_package_name	= "$options->{package_name}-$options->{package_version}";
+		my $new_package_dir	= "${temp_dir}/${npd}/$new_package_name";
+		my $new_conf_file	= "${new_package_dir}/package.conf";
+		my $new_archive_file	= "${new_package_dir}/${new_package_name}.tar";
+
+		PrintToLog($options,0,"Creating new package at $new_package_dir\n");
+
+#		print STDERR "archive_file $archive_file\n";
+#		print STDERR "conf_file $conf_file\n";
+#		print STDERR "new_package_name $new_package_name\n";
+#		print STDERR "new_package_dir $new_package_dir\n";
+#		print STDERR "new_conf_file $new_conf_file\n";
+#		print STDERR "new_archive_file $new_archive_file\n";
+
+		unless ( -d "$new_package_dir" or mkdir "$new_package_dir" ) {
+			print STDERR "Could not create a new package dir ${new_package_dir}: $!\n";
+			## XCXX should "die" on error, but this has no 
+			## error handling, not re-engineering it now.
+		}
+
+		## XXX error handling here needs to be improved
+
+		move ($archive_file, "${new_package_dir}/") or print STDERR "Could not move package $archive_file into ${new_package_dir}/: $!\n";
+		move ($conf_file, $new_conf_file) or print STDERR "Could not move package $conf_file into ${new_conf_file}: $!\n";
+		$options->{archive_file} = $new_archive_file;
+		$options->{conf_file} = $new_conf_file;
 	}else{
-		unlink "$options->{temp_dir}/$options->{archive_file}";
-		unlink "$options->{temp_dir}/$options->{conf_file}";
+		unlink $archive_file;
+		unlink $conf_file;
 		if ($options->{new_package_dir} ne '')  {
-			ExitProgram($options,"$options->{new_package_dir} does not exist. Cannot create new package folder.\n");
+			ExitProgram($options,"$options->{new_package_dir} does not exist. Cannot create new package directory.\n");
 		}
 	}
 	File::Path::rmtree "$options->{temp_dir}/.archiveTemp";
@@ -1037,12 +1353,17 @@ sub ExitProgram {
 	}
 	if ($options->{'upload'})  {
 #		chdir $options->{swamp_api};
-		SwampCli($options, "logout");
+		if ($logged_in) {
+			SwampCli($options, "logout");
+		}
 	}
 
-	LockRelease($options->{lock_fh},"$options->{progdir}/$options->{lock_filename}");
+	# LockRelease($options->{lock_fh},"$options->{progdir}/$options->{lock_filename}");
+	LockRelease($options);
+
 #CloseLog($options);
-	die;
+
+	exit 2;			## choose better exit code
 
 }
 
@@ -1072,7 +1393,7 @@ sub PrintAssess {
 		my $previousResults = "";
 		while(!$results){
 
-			$results = SwampCli($options, "status", "-A", "$nextAssess", "-P", "$options->{project}");
+			$results = SwampCli($options, "status", "-A", "$nextAssess", $options->{project_arg}, $options->{project_id});
 			if (!$results){
 				ExitProgram($options,"Could not get results from $nextAssess: $!\n");
 			}elsif (substr ($results,0,10) eq "Finished, ")  {
@@ -1090,7 +1411,7 @@ sub PrintAssess {
 
 		}
 
-		SwampCli($options, "results", "-R", "$results", "-P", "$options->{project}", "-F", "$options->{output_dir}/Result_$nextAssess") or ExitProgram($options, "Could not retrieve results from $results: $!\n");
+		SwampCli($options, "results", "-R", "$results", $options->{project_arg}, $options->{project_id}, "-F", "$options->{output_dir}/Result_$nextAssess") or ExitProgram($options, "Could not retrieve results from $results: $!\n");
 		print "Results of $nextAssess are available at $options->{output_dir}/Result_$nextAssess\n";
 
 	}
