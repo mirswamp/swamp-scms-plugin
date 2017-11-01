@@ -89,6 +89,9 @@ sub ProcessOptions {
 	my $print_things = ( $options{print_tools} || $options{print_platforms}
 		|| $options{print_projects} || $options{print_packages} );
 
+	my $exit_early = ( $print_things ||
+				$options{login} || $options{logout} );
+
 	my $jar = "$options{prog_dir}/bin/$options{jar_name}";
 
 
@@ -117,7 +120,7 @@ sub ProcessOptions {
 		system("java", "-jar", $jar, "logout");
 	}
 
-	if ($print_things) {
+	if ($exit_early) {
 		exit;
 	}
 
