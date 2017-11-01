@@ -1,41 +1,265 @@
-#
-# Where to upload
-#
+## Template for git/svn SWAMP_Uploader config file
 
-swamp-url=https://www.mir-swamp.org
+## This is the template for the config file.  It has many examples
+## of ACTUAL configuration options to use.  In addition explanation
+## of how to query the SWAMP for queryable things are included.
+
+## The SWAMP can be queried interactivly with the hook; nB;
+## However, because the hook is not being run 
+## There are a number of examples of commands to run to extract
+## information from the configured SWAMP.  These commands need 
+## to be run from the ROOT of the workspace / repository, so that
+## all the config files may be located properly.
+
+
+## The swamp-cli (used to access the SWAMP from the plugin) requires java 8
+## or newer.   If java8 is not the default "java" on the system, it can
+## be configured in the config file.   This also allows development
+## with java7 to work seamlessly.
+##
+## Contact the system administrator for details, typically ...
+## Java is commonly installed to /usr/lib/jvm:
+## redhat/fedora        java-1.8.0-openjdk
+## debian/ubuntu        java-8-openjdk-amd64    (amd64 64 bit, i386 32 bit)
+#JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+#JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+
+#
+# Which SWAMP to talk with; the url is the one 
+# used to connect to the mir-swamp or a personal 
+# swamp-in-a-box.
+#
+# ## XXX swamp-url= is a whole page down due to the SSL mentioned next
+#
 # Default is https://www.mir-swamp.org
 
+swamp-url=https://www.mir-swamp.org
+
+# *** A NOTE ON swamp-url ***
+#
+# If connecting to a swamp-in-a-box, use the URL which the browser
+# uses to connect to the SIAB -- such as https://www.my-swamp.my-domain.com
+#
+# If swamp-in-a-box is used, either the plugin or swamp-in-a-box may need
+# to be configured to to work with each other.  This configuration 
+# is often required due to the common use of self-signed SSL certificates on
+# swamp-in-a-box installations.  Java SSL (used by the swamp-cli)
+# doesn't trust self-signed certificates, and can't authenticate
+# with most swamp-in-a-box.   To correct this issue, two approaches  of
+# providing an SSL certificate for the swamp-in-a-box to work with
+# the scms plugin are possible:
+#
+# 1) Self-Signed certificate. -- some small system admin work is required:
+#	Java  needs to be configured on system you are using, by
+#	adding the self-signed signing key for the swamp-in-a-box server
+#	to the java jre security/cacerts file. 
+#	Root access is usually required on system to update this
+#	certificate.
+#
+#	This is most suitable for a single-user single system, or for
+#	a user-owned java installation.
+#
+# 2) CA-Signed certficate -- Install a root-CA-signed SSL certificate on the
+#	swamp-in-a-box server.   Free SSL certificates are available from
+#	letsencrypt.org.  The root-CA-signed certificate will need to
+#	be installed as the web server SSL certificate.   Large organizations
+#	may have their own internal CA signing key for this purpose.
+#	This requires root access to the swamp-in-a-box system.
+#
+#	This approach is prefered & easier when mulitple hosts are using
+#	the swamp-in-a-box.   We recommend it, due to the low cost.
+#
+# If either is required, please contact the SWAMP help disk for detailed
+# installation and configuration instructions.
+#
+
+
+#
+# The project to place the package into.  Projects
+# are used for two purposes in the swamp
+# 1) sharing of package.
+# 2) a project may have unique tools available to it.
+#
+# MyProject is the unshared default project availabe
+# to any user account which has not been modified.
+#
+# To see a list of projects available, w/out using the SWAMP GUI:
+#
+#	./[.git]/hooks/SWAMP_Uploader/uploadPackage.pl --print-projects
+
 project=MyProject
-# The project to upload the package to
 
 #
 # When / What to upload
 #
 
-package-dir=./
+## Software uploaded to the SWAMP to be assessed is called a "package".
+## A package consists of a directory hierarchy; the root
+## of the SCMS workspace is often used for this.
+##
+## A file describing how to build the package in an automated fashion
+## by the SWAMP is called 'package.conf'; see details elsewhere.
+##
+## When a workspace is archived for transmission to the SWAMP, the hook
+## uses the SCMS to create an archive from package-dir in the SCMS
+## workspace.
+##
+## In addition, the 'package.conf' file is pulled from the location
+## specified.
+
+#
 # Directory of the package to be assessed (./ for root directory)
+#
+
+package-dir=./
+
+#
+# The location of the package.conf file from the package directory
+#
 
 package-conf=./package.conf
-# The location of the package.conf file from the package directory
 
+#
+# branches assessed by the hook
+#
 allowed-branches=master, branch01, branch02, branch03
-# The branches assessed by the hook
 
 #
 # How to assess
 #
 
+#
+# new-package-dir
+#
+# Specify this directory if you would like the archived package and
+# package.conf configuration saved from each upload to the swamp.
+#
+# If you want to save a copy of each assessment uploaded to the swamp,
+# new-package-dir allows you to create an archive directory; the dir
+# is _relative_ to the WORKSPACE-ROOT/[.git]/hooks/SWAMP_Uploader/.tempdir
+# directory.
+#
+# The directory to place the zipped package and a cloned package.conf
+# file after the assessment
+#
+# If this field is missing, files generated for each upload will be discarded
+# after the assessment.
+
 new-package-dir=./
-# The directory to place the zipped package and a cloned package.conf file after the assessment
-# Do not add this field if you would like these files discarded after the assessment
-
-tool=checkstyle,error-prone,Findbugs,PMD
-# The tools used for the assessment separated by commas
-# Functionality for an "all" option will be added soon
-
-platform=Ubuntu Linux
-# The platform to assess the package on
 
 #
-# Generated by the installer
+# tools
 #
+# Select which SWAMP tool(s) will be used on the assessments
+# triggered by a commit or push.
+#
+# This is a comma seperated list of SWAMP tools.
+#
+# To see a list of projects available, w/out using the SWAMP GUI:
+#
+#	./[.git]/hooks/SWAMP_Uploader/uploadPackage.pl --print-tools
+#
+# The tools used for the assessment separated by commas.
+# Functionality for an "all" option will be added soon.
+#
+# Only the latest tool= line is used; you will need to construct a
+# tool= line for the package language & tests to be run.
+
+## c tools
+#tool=GCC,cppcheck,Clang Static Analyzer
+
+## licensed c/c++ tools 
+#tool=Parasoft C/C++test,GrammaTech CodeSonar,Synopsys Static Analysis (Coverity)
+
+## java tools
+#tool=checkstyle,error-prone,Findbugs,PMD,OWASP Dependency Check
+
+## licensed java tools 
+#tool=Parasoft Jtest
+
+## Android tools (all java tools + these) revealdroid is only for APKs
+#tool=Android lint,RevealDroid
+
+
+## python tools
+#tool=Pylint,Flake8,Bandit
+
+## ruby tools
+#tool=ruby-lint,RuboCop,Reek,Dawn,Brakeman
+
+## web tools
+#tool=JSHint,PHPMD,Retire.js,HTML Tidy,PHP_CodeSniffer,XML Lint,CSS Lint,Flow,ESLint
+
+
+#
+# platform
+#
+# A comma-seperated list of platforms used to assess with the tools
+#
+# To see a list of platforms available on the SWAMP you are using:
+#
+#	./[.git]/hooks/SWAMP_Uploader/uploadPackage.pl --print-tools
+#
+# Initially, the platform names looked like text names, such as
+#	Ubuntu Linux
+# These names were long, and did not allow selection of OS versions.
+# In Fall 2017 the SWAMP is switching to shorter names which better
+# reflect the platform name, version, and 64/32 bit-ed-ness of an os.
+# These "new format" (which are our real os names) look like
+#	<os>-<version>-<bits>
+# for example
+#	ubuntu-16.04-64		ubuntu 16 LTS
+#	centos-6-64		current centos-6.x-64 vm  in the SWAMP
+#
+# The "standard" platform which the SWAMP uses for many assessments
+# is the ubuntu-16.04-64 platform.  This is the ONLY supported platform
+# for java, python, ruby, and web assessments.  Many of the assessment
+# platforms and tools will run on all of the SWAMP platforms.  The SWAMP
+# only supports ubuntu-16 for those languages.
+#
+# OLD Names (it is not possible to choose versions of debian, fedora & ubuntu)
+#
+#	These old names are deprecated; they no longer exist in the SWAMP
+#	However, to aid transition of older config files, they are 
+#	automatically mapped to the newer names, and a warning issued.
+#
+#	Android
+#	CentOS Linux 6 32-bit
+#	CentOS Linux 6 64-bit
+#	Debian Linux
+#	Fedora Linux
+#	Scientific Linux 6 32-bit
+#	Scientific Linux 6 64-bit
+#	Ubuntu Linux
+#
+#
+# NEW (October 19, 2017 mir-swamp, swamp-in-box >== 1.31)
+#	android-ubuntu-12.04-64
+#	centos-6-64
+#	centos-6-32
+#	debian-7-64
+#	debian-8-64
+#	fedora-18-64
+#	fedora-19-64
+#	fedora-20-64
+#	fedora-21-64
+#	fedora-22-64
+#	fedora-23-64
+#	fedora-24-64
+#	scientific-6-64
+#	scientific-6-32
+#	ubuntu-12.04-64
+#	ubuntu-14.04-64
+#	ubuntu-16.04-64
+#	
+# Swamp-in-a-box systems ship only with the Ubuntu Linux/ubuntu-16.04-64 VM
+# Deployers may be able  download and add in other VMs;  Use
+# --print-platforms (mentioned above) to find which VMs are available in
+# the SWAMP you are using.
+
+# Old single-platform name
+#platform=Ubuntu Linux
+
+# Fall 2017 / swamp-in-a-box >= 1.31 and on single-platform name
+platform=ubuntu-16.04-64
+
