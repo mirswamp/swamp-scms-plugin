@@ -37,6 +37,26 @@ To install the git hook, run the installer script using the following options:
 |--print-tools | Prints out all available tools for use in the congifuration files (see below)
 |==========================
 
+Your environment can be setup to use a particular java by setting JAVA_HOME
+to the root of the java installed, and then adding $JAVA_HOME/bin to
+your PATH.
+This can be inconvenient or problematic in situations; instead
+of modifying your environment, 
+the plugin can be configured to use the correct version of
+java at all times.
+
+To configure the java version used by the plugin, use the 
+JAVA_HOME configuration option.
+This option exists in the hook\SWAMP_Uploader/uploaderConfig.conf file.
+On a redhat-like system, such as fedora, rhel, scientific, or centos,
+add:
+`JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk`
+On a debian-like system, such as debian or ubuntu, add:
+`JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64`
+
+The correct version of java must be available and configured, either
+in the environment or the config file.
+
 == Configuring the Hook
 The SWAMP hook must be configured before use. This configuration can be modified by altering the configuration files below. +
 If you are calling the script directly, you can set the values on the command line using `--opt-name`. The value in parentheses is the short command line option name.
@@ -49,14 +69,20 @@ If you are calling the script directly, you can set the values on the command li
 2+|*Assessment Options*
 |platform (-p) | The name of the platforms used in the assessment 
 For a full list of platforms, run
-`hooks/SWAMP_Uploader/swamp-java-api-client/scripts/run-main.sh platform -L` 
+`hooks/SWAMP_Uploader/uploadPackage.pl --print-platforms` 
 Enter the platform names desired separated by commas (ex. platform=Red Hat Enterprise Linux 64-bit, Scientific Linux 64-bit,Centos Linux, etc.)
 |project | The name of the project that the package will be uploaded to 
-Use MyProject if you have not created a project of your own, as that is the default on the SWAMP
+The name 'MyProject' is the name of the project which every SWAMP
+acount has available to it in the stock configuration.
+If you have created other SWAMP projects, or joined another SWAMP projects,
+those are also valid
+For a full list of projects available to you, run
+`hooks/SWAMP_Uploader/SWAMP_Uploader/uploadPackage.pl --print-projects`
 |tool (-t) | The tool names used for the assessment 
 For a full list of tools, run
-`hooks/SWAMP_Uploader/swamp-java-api-client/scripts/run-main.sh tools -L` 
+`hooks/SWAMP_Uploader/SWAMP_Uploader/uploadPackage.pl --print-tools`
 Enter the tool names desired separated by commas (ex. tool=findbugs,errorprone, checkstyle, etc.)
+Tool names are case sensitive; use --print-tools output exactly!
 2+|*Runtime Options*
 |allowed-branches | Specify the branches that should be submitted to the SWAMP. 
 Specify multiply branches separated by commas (ex. allowed-branches=master,branch01, branch02) 
