@@ -917,6 +917,10 @@ sub UploadPackage  {
 	unless ($packageID){
 		ExitProgram($options,"Upload failed: $!\n");
 	}
+
+	## remove newline from uuid
+	chomp $packageID;
+
 	PrintToLog($options,0,"Package UUID: $packageID\n");
 
 	AssessPackage($options, $packageID);
