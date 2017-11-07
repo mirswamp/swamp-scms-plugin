@@ -1522,7 +1522,11 @@ print STDERR "Commit $nextCommit: No recovery necessary\n";
 				Login ($options);
 #PrintAssess($options);
 				PrintToLog($options,0,"Logging out\n");
-				SwampCli($options, "logout") or ExitProgram($options,"Could not log out: $!\n");
+				unless ( SwampCli($options, "logout") ) {
+					## if logout fails, don't try it again
+					$logged_in = 0;
+					ExitProgram($options,"Could not log out: $!\n");
+				}
 				PrintToLog($options,0,"End of program.\n");
 			};
 			next;
