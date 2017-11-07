@@ -17,6 +17,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+## XXX These special comments exist to delineate the 'use' directives
+## for the plugin, which are ALL located here.  This section
+## ie mechanically extracted to verify that the perl packages are
+## available.    DO NOT MODIFY THOSE TAGS!
+
+#@PERL-USE-BEGIN@
+
 use strict;
 use warnings;
 use Archive::Extract;
@@ -29,7 +36,10 @@ use File::Temp;
 use Digest::MD5;
 use Digest::SHA;
 use Fcntl qw(:DEFAULT :mode :flock);
-use Data::Dumper;
+#use Data::Dumper;
+
+#@PERL-USE-END@
+
 
 my $versionString = "0.9.1";
 

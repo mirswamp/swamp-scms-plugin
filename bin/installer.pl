@@ -15,13 +15,22 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express implied.
 #  See the License for the specific language governing permissions and
 
+## XXX These special comments exist to delineate the 'use' directives
+## for the plugin, which are ALL located here.  This section
+## is mechanically extracted to verify that the perl packages are
+## available.    DO NOT MODIFY THOSE TAGS!
+
+#@PERL-USE-BEGIN@
+
 use strict;
 use warnings;
 use Getopt::Long qw(GetOptionsFromString);
 use File::Copy;
-use Archive::Extract;
 use File::Path;
 use File::Basename;
+
+#@PERL-USE-END@
+
 
 sub ProcessOptions {
 
