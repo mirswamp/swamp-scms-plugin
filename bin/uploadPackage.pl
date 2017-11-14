@@ -41,7 +41,7 @@ use Fcntl qw(:DEFAULT :mode :flock);
 #@PERL-USE-END@
 
 
-my $versionString = "0.9.1";
+my $versionString = "1.3.3";
 
 my @packageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
 my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
@@ -513,7 +513,13 @@ sub verifyOptions  {
 	$options->{config_errs} = 0;
 
 	## query_only == querying SWAMP for config data, no running or changing
-	$options->{query_only} = ($options->{print_tools} || $options->{print_platforms} || $options->{print_projects} || $options->{print_packages} || $options->{verify} );
+	$options->{print_only} =  (
+					   $options->{print_tools}
+					|| $options->{print_platforms}
+					|| $options->{print_projects}
+					|| $options->{print_packages}
+					);
+	$options->{query_only} = ($options->{print_only} || $options->{verify});
 
 	my $valid = 1;
 #	unless ($options->{verify}){
@@ -551,7 +557,7 @@ sub verifyOptions  {
 		}
 	}
 	unless ($options->{verify} || $options->{program} eq 'git' || $options->{program} eq 'svn')  {
-		unless ($options->{print_tools} || $options->{print_platforms} || $options->{print_projects} || $options->{print_packages} ){
+		unless ( $options->{print_only} ){
 			print STDERR "You must specify if you are using SVN or git by adding the option --program svn or --program git\n";
 			$valid = 0;
 		}
@@ -604,28 +610,27 @@ sub verifyOptions  {
 			$valid = $options->{query_only} ? 1 : 0;
 		}
 	}
-	if ($valid){
+	if ($valid && $options->{print_only} ) {
 		if ($options->{print_tools}){
 			## XXX this is wrong, if a project is selected the tools
 			## can be different, but there is no way to process this
 			## at current time.
 			print SwampCli($options, "tools", "-L");
 			print "\n";
-			exit;
 		}
 		if ($options->{print_platforms}){
 			print SwampCli($options, "platform", "-L");
 			print "\n";
-			exit;
 		}
 		if ($options->{print_projects}){
 			print SwampCli($options, "project", "-L");
 			print "\n";
-			exit;
 		}
 		if ($options->{print_packages}){
 			print SwampCli($options, "package", "-L");
 			print "\n";
+		}
+		if ($options->{print_only}) {
 			exit;
 		}
 	}
