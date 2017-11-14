@@ -588,7 +588,7 @@ sub verifyOptions  {
 	}
 	if ($valid) {
 		if (defined($options->{project}) && length($options->{project})) {
-			$options->{project_id} = SwampCli($options, "project", "-N", "$options->{project}");
+			$options->{project_id} = SwampCli($options, "project", "-U", "-N", "$options->{project}");
 			$options->{project_id} =~ s/^\s+|\s+$//g;
 			## XXX need to match a uuid, 36 character project names exist
 			if (length $options->{project_id} != 36)  {
@@ -640,7 +640,7 @@ sub verifyOptions  {
 			my @toolUUIDs;
 			my $bad = 0;
 			foreach my $nextTool (@toolNames)  {
-				my $nextUUID = SwampCli($options, "tools", $options->{project_arg}, $options->{project_id}, "-N", "$nextTool");
+				my $nextUUID = SwampCli($options, "tools", $options->{project_arg}, $options->{project_id}, "-U", "-N", "$nextTool");
 				$nextUUID =~ s/^\s+|\s+$//g;
 				if (length $nextUUID == 36)  {
 					push @toolUUIDs, $nextUUID;
@@ -676,7 +676,7 @@ sub verifyOptions  {
 					## fatal unless the mapped platform
 					## doesn't exist.
 				}
-				my $nextUUID = SwampCli($options, "platform", "-N", "$nextPlatform");
+				my $nextUUID = SwampCli($options, "platform", "-U", "-N", "$nextPlatform");
 				$nextUUID =~ s/^\s+|\s+$//g;
 				if (length $nextUUID == 36)  {
 					push @platformUUIDs, $nextUUID;
@@ -913,7 +913,7 @@ sub UploadPackage  {
 #sleep 5;
 #print "Awake\n";
 
-	my $packageID = SwampCli($options, "package", "--quiet", "--pkg-archive", $options->{archive_file}, "--pkg-conf", $options->{conf_file}, "--project-uuid", $options->{project_id});
+	my $packageID = SwampCli($options, "package", "--upload", "--quiet", "--pkg-archive", $options->{archive_file}, "--pkg-conf", $options->{conf_file}, "--project-uuid", $options->{project_id});
 
 #print "Sleeping after package was uploaded\n";
 #sleep 5;
@@ -952,7 +952,7 @@ sub AssessPackage {
 #sleep 5;
 #print "Awake\n";
 
-				$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $nextTool);
+				$assessResults = SwampCli($options, "assess", "--run", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $nextTool);
 
 				if (!$assessResults){
 					ExitProgram($options,"Assessment failed! $!\n");
@@ -1000,7 +1000,7 @@ sub AssessOnPlatforms {
 #sleep 5;
 #print "Awake\n";
 
-		$assessResults = SwampCli($options, "assess", "--run-assess", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $toolID, "--platform-uuid", $nextPlatform);
+		$assessResults = SwampCli($options, "assess", "--run", "--quiet", "--pkg-uuid", $packageID, "--project-uuid", $options->{'project_id'}, "--tool-uuid", $toolID, "--platform-uuid", $nextPlatform);
 
 		if (!$assessResults){
 			ExitProgram($options,"Assessment failed! $!\n");
