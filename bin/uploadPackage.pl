@@ -878,7 +878,7 @@ sub Login  {
 #    sleep 30;
 #print "done\n";
 
-	my $output = SwampCli($options, "login", "--filepath", "$filename", "-S", "$options->{swamp_url}");
+	my $output = SwampCli($options, "login", "--quiet", "--filepath", "$filename", "-S", "$options->{swamp_url}");
 	close $fh;
 	unless ($output){
 		$logged_in = 0;
@@ -1373,7 +1373,7 @@ sub ExitProgram {
 	if ($options->{'upload'})  {
 #		chdir $options->{swamp_api};
 		if ($logged_in) {
-			SwampCli($options, "logout");
+			SwampCli($options, "logout", "--quiet");
 		}
 	}
 
@@ -1531,7 +1531,7 @@ print STDERR "Commit $nextCommit: No recovery necessary\n";
 				Login ($options);
 #PrintAssess($options);
 				PrintToLog($options,0,"Logging out\n");
-				unless ( SwampCli($options, "logout") ) {
+				unless ( SwampCli($options, "logout", "--quiet") ) {
 					## if logout fails, don't try it again
 					$logged_in = 0;
 					ExitProgram($options,"Could not log out: $!\n");
@@ -1651,7 +1651,7 @@ print STDERR "Commit $nextCommit: No recovery necessary\n";
 #PrintAssess($options);
 				}
 				PrintToLog($options,0,"Logging out\n");
-				SwampCli($options, "logout") or ExitProgram($options,"Could not log out: $!\n");
+				SwampCli($options, "logout", "--quiet") or ExitProgram($options,"Could not log out: $!\n");
 				PrintToLog($options,0,"End of program.\n");
 			}
 		};
@@ -1715,7 +1715,7 @@ sub main  {
 #PrintAssess($options);
 		}
 		PrintToLog($options,0,"Logging out\n");
-		SwampCli($options, "logout") or ExitProgram($options,"Could not log out: $!\n");
+		SwampCli($options, "logout", "--quiet") or ExitProgram($options,"Could not log out: $!\n");
 
 	}
 
