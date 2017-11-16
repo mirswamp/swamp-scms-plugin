@@ -43,8 +43,21 @@ use Fcntl qw(:DEFAULT :mode :flock);
 
 my $versionString = "1.3.3";
 
-my @packageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
-my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
+my @allPackageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
+
+## Just the ones in the SWAMP.
+my @packageLanguages = (
+	"C", "C++",
+	"Java",
+	"CSS", "HTML", "JavaScript", "PHP", "XML",
+	"Perl",
+	"Python", "Python-2", "Python-3",
+	"Ruby",
+	);
+
+my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "autotools+configure+make", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
+
+
 
 ## map old-style platform names to new ones to ease the transition
 my %old_platform_names = (
@@ -87,6 +100,9 @@ sub ProcessOptions  {
 			print_tools	=> 0,
 			print_platforms	=> 0,
 			print_projects	=> 0,
+			print_languages	=> 0,
+			print_all_languages	=> 0,
+			print_build_sys => 0,
 			'config_file'	=> "$progdir/uploadConfig.conf",
 			'global_config'	=> "$homedir/.SWAMPUploadConfig.conf",
 			'credentials_file'=> "$progdir/uploadCredentials.conf",
@@ -122,6 +138,9 @@ sub ProcessOptions  {
 			"print_platforms|print-platforms|list-platforms",
 			"print_projects|print-projects|list-projects",
 			"print_packages|print-packages|list-packages",
+			"print_languages|print-languages|list-languages",
+			"print_all_languages|print-all-languages|list-all-languages",
+			"print_build_sys|print-build-sys|list-build-sys",
 			"config_file|config-file|c=s",
 			"global_config|global-config=s",
 			"credentials_file|credentials-file=s",
@@ -513,11 +532,21 @@ sub verifyOptions  {
 	$options->{config_errs} = 0;
 
 	## query_only == querying SWAMP for config data, no running or changing
+
+	# if only these, could avoid connecting to the SWAMP ... but
+	# once the CLI and API deal with these correctly, need to connect
+	# anyway.
+	$options->{local_print_only} = (
+					   $options->{print_languages}
+					|| $options->{print_all_languages}
+					|| $options->{print_build_sys}
+					);
 	$options->{print_only} =  (
 					   $options->{print_tools}
 					|| $options->{print_platforms}
 					|| $options->{print_projects}
 					|| $options->{print_packages}
+					|| $options->{local_print_only}
 					);
 	$options->{query_only} = ($options->{print_only} || $options->{verify});
 
@@ -629,6 +658,21 @@ sub verifyOptions  {
 		if ($options->{print_packages}){
 			print SwampCli($options, "package", "-L");
 			print "\n";
+		}
+		if ($options->{print_languages}) {
+			foreach (@packageLanguages) {
+				print "$_\n";
+			}
+		}
+		if ($options->{print_all_languages}) {
+			foreach (@allPackageLanguages) {
+				print "$_\n";
+			}
+		}
+		if ($options->{print_build_sys}) {
+			foreach (@buildSystems) {
+				print "$_\n";
+			}
 		}
 		if ($options->{print_only}) {
 			exit;
