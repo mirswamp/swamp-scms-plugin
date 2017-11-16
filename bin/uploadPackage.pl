@@ -701,7 +701,7 @@ sub verifyOptions  {
 	}
 	if (-e $options->{package_conf}){
 		my $packageConf = ReadConfFile($options->{package_conf});
-		if (!(exists $packageConf->{'package-dir'}) || $packageConf->{'package-short-name'} eq "") {
+		if (!(exists $packageConf->{'package-dir'}) || $packageConf->{'package-dir'} eq "") {
 			print STDERR "Please specify a package-dir in $options->{package_conf}.\n";
 			print STDERR "\tpackage-dir=.  is a good choice in the typical case.\n";
 			print STDERR "\tThis warning is a work-around for a bug in the SWAMP.\n\tNot handling missing package-dir elements.\n\tOnce the SWAMP issue is fixed, this warning will be eliminated.\n";
