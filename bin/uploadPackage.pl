@@ -43,9 +43,32 @@ use Fcntl qw(:DEFAULT :mode :flock);
 
 my $versionString = "1.3.3";
 
-my @allPackageLanguages = ("ActionScript", "Ada", "AppleScript", "Assembly", "Bash", "C", "C#", "C++", "Cobol", "ColdFusion", "CSS", "D", "Datalog", "Erlang", "Forth", "Fortran", "Haskell", "HTML", "Java", "JavaScript", "LISP", "Lua", "ML", "OCaml", "Objective-C", "PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3", "Rexx", "Ruby", "sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift", "Tcl", "tcsh", "Visual-Basic" );
+## XXX no reason for these to be alphabetical; functional groupings
+## would be better and reflect how the SWAMP works & allow cross-check.
+##
+## Eventually this should be fetched & cached from the cli.
 
-## Just the ones in the SWAMP.
+my @allPackageLanguages = (
+	"ActionScript", "Ada", "AppleScript", "Assembly",
+	"Bash",
+	"C", "C#", "C++", "Cobol", "ColdFusion", "CSS",
+	"D", "Datalog",
+	"Erlang",
+	"Forth", "Fortran",
+	"Haskell", "HTML",
+	"Java", "JavaScript",
+	"LISP", "Lua",
+	"ML",
+	"OCaml", "Objective-C",
+	"PHP", "Pascal", "Perl", "Prolog", "Python", "Python-2", "Python-3",
+	"Rexx", "Ruby",
+	"sh", "SQL", "Scala", "Scheme", "SmallTalk", "Swift",
+	"Tcl", "tcsh",
+	"Visual-Basic",
+	);
+
+## Just the ones in the SWAMP.  Be better if the above list
+## had supported / non-supported keys.   As time permits.
 my @packageLanguages = (
 	"C", "C++",
 	"Java",
@@ -55,7 +78,29 @@ my @packageLanguages = (
 	"Ruby",
 	);
 
-my @buildSystems = ("android+ant", "android+ant+ivy", "android+gradle", "android+maven", "ant", "ant+ivy", "autotools+configure+make", "cmake+make", "configure+make", "gradle", "java-bytecode", "make", "maven", "no-build", "none", "other", "python-distutils");
+## XXX need language dependent build systems for config checking!
+my @buildSystems = (
+	"android+ant", "android+ant+ivy", "android+gradle", "android+maven",
+	"ant", "ant+ivy",
+	"autotools+configure+make",
+	"bundler",
+	"bundler+rake",
+	"cmake+make",
+	"composer",
+	"configure+make",
+	"gradle",
+	"java-bytecode",
+	"make",
+	"maven",
+	"no-build",
+	"none",
+	"npm",
+	"other",
+	"pear",
+	"python-distutils",
+	"ruby-gem",
+	"wheels",
+	);
 
 
 
@@ -764,10 +809,24 @@ sub verifyOptions  {
 			$options->{config_errs}++;
 			$valid = 0;
 			$valid = $options->{verify} ? 1 : 0;
-		}else{
+		}
+		else {
 			my %params = map { $_ => 1 } @packageLanguages;
-			unless (exists($params{$packageConf->{'package-language'}})){
-				print STDERR "Package language \"$packageConf->{'package-language'}\" is invalid. Please verify you have a valid language in $options->{package_conf}.\n";
+			my $invalid_langs = "";
+			my $pl = $packageConf->{'package-language'};
+			## ' ' is any whitespace, special perl case
+			my @langs = split(' ', $pl);
+			foreach my $lang (@langs) {
+				unless ( exists ( $params{$lang}) ) {
+					if ($invalid_langs) {
+						$invalid_langs .= " ";
+					}
+					$invalid_langs .= $lang;
+				}
+			}
+			if ( $invalid_langs ) {
+				print STDERR "$options->{package_conf}: package-language: \"$invalid_langs\" invalid.\n";
+				print STDERR "\tUse --print-languages to view the list of valid languages.\n";
 				$options->{config_errs}++;
 	                        $valid = 0;
 				$valid = $options->{verify} ? 1 : 0;
@@ -776,10 +835,12 @@ sub verifyOptions  {
 		if (!(exists $packageConf->{'build-sys'}) || $packageConf->{'build-sys'} eq ""){
 			print STDERR "Please specify a valid build system in $options->{package_conf}.\n";
                         $valid = 0;
-		}else{
+		}
+		else {
 			my %params = map { $_ => 1 } @buildSystems;
 			unless (exists $params{$packageConf->{'build-sys'}}){
-				print STDERR "Build system \"$packageConf->{'build-sys'}\" is invalid. Please verify you have a valid build system in $options->{package_conf}.\n";
+				print STDERR "$options->{package_conf}: build-sys: \"$packageConf->{'build-sys'}\" invalid.\n";
+				print STDERR "\tUse --print-build-sys to view the list of valid build systems.\n";
 				$options->{config_errs}++;
 	                        $valid = 0;
 				$valid = $options->{verify} ? 1 : 0;
@@ -1343,7 +1404,7 @@ sub RemoveTempPackage {
 
 		unless ( -d "$new_package_dir" or mkdir "$new_package_dir" ) {
 			print STDERR "Could not create a new package dir ${new_package_dir}: $!\n";
-			## XCXX should "die" on error, but this has no 
+			## XCXX should "die" on error, but this has no
 			## error handling, not re-engineering it now.
 		}
 
