@@ -1,5 +1,17 @@
 ------------------------
-swamp-scms-plugin version releases/1.3.3 (Wed Nov  1 15:50:23 CST 2016)
+swamp-scms-plugin version releases/1.3.4 (Unk Nov XX 14:40:41 CST 2016)
+------------------------
+- Updated the list of build-systems.
+
+- Updated the list of valid SWAMP languages.
+
+- Plugin now supports multiple languages; required for web assessments.
+
+- --print-langauges and --print-build-sys options added to display the
+  limits of languages and build systems.
+
+------------------------
+swamp-scms-plugin version releases/1.3.3 (Wed Nov  15 15:50:23 CST 2016)
 ------------------------
 - Updates to the SCMS plugin to switch to the "new" swamp-cli syntax.  This
   is an internal operation, no user-visible changes.
