@@ -35,6 +35,9 @@ To install the git hook, run the installer script using the following options:
 |--print-projects | Prints out your available projects for use in the congifuration files (see below)
 |--print-platforms | Prints out all available platforms for use in the congifuration files (see below)
 |--print-tools | Prints out all available tools for use in the congifuration files (see below)
+|--http_proxy= | Set a http_proxy for plugin installation.
+|--https_proxy= | Set a http_proxy for plugin installation.
+|--java_home= | Set a java dir to provide java-8 for plugin installation.
 |==========================
 
 Your environment can be setup to use a particular java by setting JAVA_HOME
