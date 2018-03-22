@@ -1,5 +1,5 @@
 ------------------------
-swamp-scms-plugin version releases/1.3.4 (Unk Nov XX 14:40:41 CST 2016)
+swamp-scms-plugin version releases/1.3.4 (Fri Mar 12 12:40:41 CST 2018)
 ------------------------
 - Updated the list of build-systems.
 
@@ -9,6 +9,14 @@ swamp-scms-plugin version releases/1.3.4 (Unk Nov XX 14:40:41 CST 2016)
 
 - --print-langauges and --print-build-sys options added to display the
   limits of languages and build systems.
+
+- Add support for http_proxy and https_proxy from the config file.
+
+- Updated platforms lists for el7
+
+- Updated commercial / licensed tools for newly supported ones.
+
+- New version of the cli, swamp-java-cli-1.4.0 added to plugin.
 
 ------------------------
 swamp-scms-plugin version releases/1.3.3 (Wed Nov  15 15:50:23 CST 2016)
