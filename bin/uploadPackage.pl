@@ -2,7 +2,7 @@
 
 #  SWAMP SCMS Hooks
 #
-#  Copyright 2016-2017	Jared Sweetland, Vamshi Basupalli,
+#  Copyright 2016-2018	Jared Sweetland, Vamshi Basupalli,
 #  			James A. Kupsch, Josef "Bolo" Burger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,12 +36,13 @@ use File::Temp;
 use Digest::MD5;
 use Digest::SHA;
 use Fcntl qw(:DEFAULT :mode :flock);
+use Time::HiRes qw(time);		## uncomment for > sec res in timing
 #use Data::Dumper;
 
 #@PERL-USE-END@
 
 
-my $versionString = "1.3.3";
+my $versionString = "1.3.4";
 
 ## XXX no reason for these to be alphabetical; functional groupings
 ## would be better and reflect how the SWAMP works & allow cross-check.
@@ -122,8 +123,14 @@ my %old_platform_names = (
 
 ## too painful to propogate $options everywhere.
 my $trace_exec = 0;		## trace execution of commands
+my $trace_time = 0;		## trace time spent in commands
+
 my $logged_in = 0;		## login succeeded .. could be in options,
 				## but isn't an option.
+my $proxy_configured = 0;	## a proxy is configured
+
+my $total_exec_time = 0;	## total time spent in execed components
+my %cmd_exec_times;		## total exec times by command run
 
 #Process the user's options and config file
 #Returns a pointer to a hash with the options provided
@@ -169,11 +176,14 @@ sub ProcessOptions  {
 			'new_package_dir'=> '',
 			'temp_dir'	=> "$progdir/.tempdir",
 			'allowed_branches'=> 'master',
+			'http_proxy'	=> '',
+			'https_proxy'	=> '',
 			'cli_jar'       => '.git/hooks/SWAMP_Uploader/swamp-cli-jar-with-dependencies.jar',
 			'recover'	=> 0,
 			'verify'	=> 0,
 			'verbose'	=> 0,
 			'trace'		=> 0,
+			'time'		=> 0,	## print time info
 			);
 
 	my @options = (
@@ -210,7 +220,8 @@ sub ProcessOptions  {
 			"recover|r",
 			"verify",			## config files vs swamp
 			"verbose",
-			"trace",			## executiont trace
+			"trace",			## execution trace
+			"time",				## time trace
 			"old_cli|old-cli",		## USERNAME vs username
 			"JAVA_HOME|java-home",		## java version
 				);
@@ -283,6 +294,7 @@ sub ProcessOptions  {
 
 	## allow execution tracing from options as early as possible
 	$trace_exec = $options{trace};
+	$trace_time = $options{time};
 
 
 	if (!$ok || $options{help})  {
@@ -295,10 +307,12 @@ sub ProcessOptions  {
 		exit 0;
 	}
 
-	if ($options{recover})  {
-		Recover(\%options, \@options);
-		exit 0;
-	}
+	if (@errs)  {
+	        print STDERR "$0: options Errors:\n    ", join ("\n    ", @errs), "\n";
+        	exit 1;
+    	}
+
+	## JAVA must be set before recovery can be attempted
 
 	## if java is configured, configure it before using API
 	if (defined($options{JAVA_HOME}) && length($options{JAVA_HOME})) {
@@ -316,16 +330,38 @@ sub ProcessOptions  {
 			exit 1;
 		}
 
-		$ENV{PATH} = "${java_home}:$ENV{PATH}";
+		$ENV{PATH} = "${java_bin}:$ENV{PATH}";
 		$ENV{JAVA_HOME} = $java_home;
-#		system("echo ---- ; printenv | egrep 'PATH=|JAVA_HOME=|GIT|PWD=' ; echo ---");
+#		system("echo ---- ; printenv | egrep '^PATH=|JAVA_HOME=|GIT|PWD=' ; echo ----");
 	}
 
+	## PROXY must be set before recovery can be attempted
 
-	if (@errs)  {
-	        print STDERR "$0: options Errors:\n    ", join ("\n    ", @errs), "\n";
-        	exit 1;
-    	}
+	## This sets it for EVERYTHING downstream instead of just
+	## java-cli.  However, that doesn't seem a problem if a proxy
+	## is required.
+	##
+	## To change this, we should add a swamp-proxy-only option,
+	## and then inject the environment ONLY when java-cli is used.
+
+	foreach my $proxy ( qw/ http_proxy https_proxy / ) {
+		if (defined($ENV{$proxy})) {
+			printf STDERR "$progname: ignoring proxy found in environment -- use config file\n";
+			printf STDERR "\t${proxy}=$ENV{$proxy}\n";
+			delete $ENV{$proxy};
+		}
+		my $opt = $options{$proxy};
+		next if (!defined($opt) || !length($opt));
+		$proxy_configured++;
+#		printf("PROXY: %s == \"%s\"\n", $proxy, $opt);
+		$ENV{$proxy} = $opt;
+#		system("echo ---- ; printenv | egrep '^http_proxy|^https_proxy' ; echo ----");
+	}
+
+	if ($options{recover})  {
+		Recover(\%options, \@options);
+		exit 0;
+	}
 
 	unless ($options{verify}){
 		InitializeLog(\%options,0);
@@ -343,6 +379,9 @@ sub ProcessOptions  {
 
 		}
 		print STDERR "$n error(s) found in configuration.\n";
+
+		print_exec_time(\%options);
+
                 exit $err;
 	}
 
@@ -535,8 +574,21 @@ sub SafeExecute  {
 	@_ = grep defined, @_;
 
 	if ($trace_exec) {
-		print "EXEC START : ", "@_", "\n";
+		# print "EXEC START :", "@_", "\n";
+		## change output format so that you can cut/paste
+		## the trace into a shell for re-execution
+		print "EXEC START :";
+		foreach (@_) {
+			my $t = $_;
+			if ( $t =~ /.*\s.*/ ) {
+				$t = "\'$t\'";
+			}
+			print " ", $t;
+		}
+		print "\n";
 	}
+
+	my $start_time = time;
 
 	open $fh_exec, "-|", @_;
 	my $output = "";
@@ -544,20 +596,72 @@ sub SafeExecute  {
 		$output = "$output$_";
 	}
 	close $fh_exec;
-	if ($?){
+	my $status = $?;		## save for later
+
+	my $end_time = time;
+	my $timing = $end_time - $start_time;
+	$total_exec_time += $timing;
+	## XXX break down cli times via args to subsystems would be great.
+	$cmd_exec_times{$_[0]} += $timing;		## per command!
+
+	if ( $status ){
 		if ($trace_exec) {
-			printf("EXEC err %d : \"%s\"\n", $?, $output);
+			printf("EXEC err %d : \"%s\"\n", $status, $output);
+			if ($trace_time > 1) {
+				printf("EXEC time %.2f\n", $timing);
+			}
 		}
 		return 0;
 	}
 	if ($trace_exec) {
 		printf("EXEC ok %d : \"%s\"\n", $?, $output);
+		if ($trace_time > 1) {
+			printf("EXEC time %.2f\n", $timing);
+		}
 	}
 	if ($output eq ""){
 		return " ";
 	}
 	return $output;
 
+}
+
+sub print_time {
+	my $time = $_[0];
+
+	my $minutes = int($time / 60);
+	my $secs = $time - $minutes * 60;
+
+	## always machine readable
+	printf("%.2f", $time);
+
+	# make something more human readable like time does.
+	if ($minutes) {
+		printf("  %d:%05.2f", $minutes, $secs);
+	}
+}
+
+## print summary of execution time
+sub print_exec_time {
+	my $options = shift @_;
+
+	return unless $options->{time} > 0;
+
+	return unless $total_exec_time;
+
+	printf("TOTAL EXEC time ");
+	print_time($total_exec_time);
+	printf("\n");
+
+	## even more verbose, ...
+	return unless $options->{time} > 2;
+
+	keys %cmd_exec_times;
+	while ( my($k, $v) = each %cmd_exec_times ) {
+		printf("%s EXEC time ", $k);
+		print_time($v);
+		printf("\n");
+	}
 }
 
 sub SwampCli {
@@ -947,6 +1051,29 @@ sub PrintVersion  {
 	print STDERR "$options->{progname} version $versionString\n";
 }
 
+# Try to give a --verify user extra information to debug connection issues
+sub LoginHelp {
+	my $options = $_[0];
+
+	return unless ($options->{verify});
+
+printf STDERR "$0: login failure hints:\n";
+printf STDERR "\tSome issues amy cause complex java errors; here is help.\n";
+printf STDERR "\t---------\n";
+printf STDERR "\t\"ERROR:: Not Found code=404. error connecting to https://swamp.host.name/login\"\n";
+printf STDERR "\t\tThe swamp-url hostame may be bad.\n";
+printf STDERR "\t---------\n";
+printf STDERR "\t\"java.net.UnknownHostException: host.name.dom: unknown error\"\n";
+printf STDERR "\t\tThe swamp-url format or hostame may be bad.\n";
+	if ($proxy_configured) {
+printf STDERR "\t\tThe http[s]_proxy configuration may be bad.\n";
+	}
+printf STDERR "\t---------\n";
+printf STDERR "\t\"No trust manager accepted the server\"\n";
+printf STDERR "\t\tThe swamp-in-a-box has a self-signed key.\n";
+printf STDERR "\t\tCheck swamp-in-a-box user manual for solutions.\n";
+}
+
 #Login to the server
 #Arguments - A pointer to a hash with:
 #    a directory to the swamp-api (swampDir)
@@ -986,6 +1113,7 @@ sub Login  {
 	my $output = SwampCli($options, "login", "--quiet", "--filepath", "$filename", "-S", "$options->{swamp_url}");
 	close $fh;
 	unless ($output){
+		LoginHelp($options);
 		$logged_in = 0;
 		unlink "$filename" or ExitProgram($options,"Could not remove temporary credentials file: $!\nLogin failed: Check your username and password.\n");
 		ExitProgram($options,"Login failed: Check your username and password. $!\n");
@@ -1487,6 +1615,10 @@ sub ExitProgram {
 
 #CloseLog($options);
 
+	if ($total_exec_time) {
+		printf("TOTAL EXEC time %.2f\n", $total_exec_time);
+	}
+
 	exit 2;			## choose better exit code
 
 }
@@ -1827,6 +1959,7 @@ sub main  {
 	PrintToLog($options,0,"End of program.\n");
 	CloseLog($options);
 
+	print_exec_time($options);
 }
 
 main();
