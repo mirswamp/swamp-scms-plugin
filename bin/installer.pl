@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #  SWAMP SCMS Hooks
 #
-#  Copyright 2016-2017	Jared Sweetland, Vamshi Basupalli,
+#  Copyright 2016-2018	Jared Sweetland, Vamshi Basupalli,
 #  			James A. Kupsch, Josef "Bolo" Burger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,8 @@ use File::Path;
 use File::Basename;
 
 #@PERL-USE-END@
+
+my $progname;
 
 
 sub ProcessOptions {
@@ -70,6 +72,9 @@ sub ProcessOptions {
 			"update",
 			"post_commit|post-commit|commit|c",
 			"post_receive|post-receive|push|r",
+			"http_proxy=s",
+			"https_proxy=s",
+			"JAVA_HOME|java_home=s",
 			);
 
 	$options{jar_name} = "swamp-cli-jar-with-dependencies.jar";
@@ -83,8 +88,6 @@ sub ProcessOptions {
                 $options{prog_dir} = ".";
         }
 
-        $options{repo} = $ARGV[0];
-
         if (!$ok || $options{help})  {
                 PrintUsage();
                 exit !$ok;
@@ -95,8 +98,33 @@ sub ProcessOptions {
                 exit 0;
         }
 
-	my $print_things = ( $options{print_tools} || $options{print_platforms}
-		|| $options{print_projects} || $options{print_packages} );
+	## if java is configured, configure it before using CLI
+	if (defined($options{JAVA_HOME}) && length($options{JAVA_HOME})) {
+		my $java_home = $options{JAVA_HOME};
+		my $java_bin = "$java_home/bin";
+		my $java = "$java_bin/java";
+		unless ( -d $java_home ) {
+			print STDERR "$0: $java_home: JAVA_HOME directory missing.\n";
+			print STDERR "$0: FATAL ERROR, can not continue.\n";
+			exit 1;
+		}
+		unless ( -e $java  &&  -x $java ) {
+			print STDERR "$0: $java: JAVA_HOME java missing or not executable.\n";
+			print STDERR "$0: FATAL ERROR, can not continue.\n";
+			exit 1;
+		}
+
+		$ENV{PATH} = "${java_bin}:$ENV{PATH}";
+		$ENV{JAVA_HOME} = $java_home;
+		# system("echo ---- ; printenv | egrep '^PATH=|^JAVA_HOME=|GIT|PWD=' ; echo ---");
+	}
+
+	my $print_things = ( 0
+		|| $options{print_tools}
+		|| $options{print_platforms}
+		|| $options{print_projects}
+		|| $options{print_packages}
+		);
 
 	my $exit_early = ( $print_things ||
 				$options{login} || $options{logout} );
@@ -104,33 +132,100 @@ sub ProcessOptions {
 	my $jar = "$options{prog_dir}/bin/$options{jar_name}";
 
 
+
+	## This sets it for EVERYTHING downstream instead of just
+	## java-cli.  However, that doesn't seem a problem if a proxy
+	## is required.
+	##
+	## To change this, we should add a swamp-proxy-only option,
+	## and then inject the environment ONLY when java-cli is used.
+	## The installer .. UNLIKE the plugin .. will use environment
+	## proxy, and not erase them.    It does this to ease use, and
+	## to inform the user they must edit their config file
+	## to specify proxy.
+
+	## if exiting early, don't make notes about  proxy configuration
+	my $proxy_configured = $exit_early;
+
+	foreach my $proxy ( qw/ http_proxy https_proxy / ) {
+		my $opt = $options{$proxy};
+		my $proxy_set = (defined($opt) && length($opt));
+
+		if ($proxy_set) {
+			if (!$proxy_configured) {
+printf STDERR "$progname: A proxy has been configured via command-line.\n";
+printf STDERR "\tThis proxy will be used to install the SWAMP-SCMS-PLUGIN\n";
+printf STDERR "\tbut will *NOT* be configured in the plugin.\n";
+printf STDERR "\tPlease configure the proxy in 'uploadConfig.conf'\n";
+printf STDERR "\tand run the plugin with --verify\n";
+printf STDERR "\tto ensure the proxy operation is verified..\n";
+			}
+			if (!$exit_early) {
+				printf STDERR "\t${proxy}=${opt}\n";
+			}
+			$proxy_configured++;
+			# printf("PROXY: %s == \"%s\"\n", $proxy, $opt);
+			$ENV{$proxy} = $opt;
+		}
+		elsif (defined($ENV{$proxy})) {
+			if (!$proxy_configured) {
+printf STDERR "$progname: A proxy has been found in the environment.\n";
+printf STDERR "\tThis proxy will be used to install the SWAMP-SCMS-PLUGIN\n";
+printf STDERR "\tbut will *NOT* be configured in the plugin.\n";
+printf STDERR "\tIf a proxy is required, please configure it in\n";
+printf STDERR "\t'uploadConfig.conf', and run the plugin with --verify\n";
+printf STDERR "\tto ensure that proxy operation is verfied.\n";
+			}
+			if (!$exit_early) {
+				printf STDERR "\t${proxy}=$ENV{$proxy}\n";
+			}
+			$proxy_configured++;
+		}
+	}
+	if ($proxy_configured) {
+#		system("echo --- ; printenv | egrep '^http_proxy|^https_proxy' ; echo ---");
+	}
+	# printf("SWAMP_url %s\n", $options{swamp_url});
+
+
 	if ($options{login} ) {
-		system("java", "-jar", $jar, "login", "-S", "$options{swamp_url}", "-C");
+		runCli(%options, "login", "-S", "$options{swamp_url}", "-C");
 	}
 
 	if ($options{print_tools}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_tools --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java", "-jar", $jar, "tools", "-list");
+		runCli(%options, "tools", "-list");
         }
         if ($options{print_platforms}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_platforms --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java", "-jar", $jar, "platform", "-list");
+		runCli(%options, "platform", "-list");
         }
         if ($options{print_projects}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java", "-jar", $jar, "project", "-list");
+		runCli(%options, "project", "-list");
         }
         if ($options{print_packages}){
 		#system("$options{prog_dir}/bin/uploadPackage.pl --print_projects --main-script $options{prog_dir}/bin/run-main.sh --verbose");
-		system("java", "-jar", $jar, "package", "-list");
+		runCli(%options, "package", "-list");
         }
 
 	if ( $options{logout} ) {
-		system("java", "-jar", $jar, "logout");
+		runCli(%options, "logout");
 	}
 
 	if ($exit_early) {
 		exit;
+	}
+
+	## many commands don't require a repository option, but if
+	## we leave here we do .. and now is the time to complain about
+	## instead of making "non-repo-commands" require a repo.
+	if (defined($ARGV[0]) && length($ARGV[0])) {
+		$options{repo} = $ARGV[0];
+	}
+	else {
+                PrintUsage();
+                exit 1;
 	}
 
 
@@ -178,6 +273,15 @@ Installs the SWAMP api, hook, and README archives and places them in the directo
 EOF
 }
 
+sub runCli {
+	my $options = shift @_;
+
+	## XXX upgrade -- store the jar path in $options
+	my $jar = "$options->{prog_dir}/bin/$options->{jar_name}";
+
+	system("java", "-jar", $jar, @_);
+}
+
 sub PrintVersion {
 	#my $progname =  $0;
         #$progname =~ s/.*[\\\/]//;
@@ -188,9 +292,12 @@ sub PrintVersion {
 }
 
 sub main {
+	$progname = basename($0);
 	my $options = ProcessOptions();
 
-	unless (exists $options->{repo} && length($options->{repo}) ) {
+	unless (defined($options->{repo})
+		&& exists $options->{repo}
+		&& length($options->{repo}) ) {
 		ExitProgram($options, "Repository not specified.");
 	}
 
