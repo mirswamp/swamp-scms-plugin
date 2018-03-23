@@ -89,15 +89,15 @@ swamp-url=https://www.mir-swamp.org
 ## The SWAMP does not follow the full proxy[s]_host spec, so you
 ## will need to fill in http[s]:// and :port always.
 
-## In a future release of the plugin, we will support traditional
-## proxy configurations.
+## In a future release of the plugin, the java-cli will support
+## the traditional range of proxy configurations.
 
 #http_proxy=http://proxy.host:proxy-port
 #http_proxy=http://username:@proxy.host:proxy-port
 #http_proxy=http://username:password@proxy.host:proxy-port
-#https_proxy=https://proxy.host:proxy-port
-#https_proxy=https://username:@proxy.host:proxy-port
-#https_proxy=https://username:password@proxy.host:proxy-port
+#https_proxy=http://proxy.host:proxy-port
+#https_proxy=http://username:@proxy.host:proxy-port
+#https_proxy=http://username:password@proxy.host:proxy-port
 
 #
 # The project to place the package into.  Projects
