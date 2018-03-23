@@ -824,6 +824,9 @@ sub verifyOptions  {
 			}
 		}
 		if ($options->{print_only}) {
+			if ($logged_in) {
+				SwampCli($options, "logout", "--quiet");
+			}
 			exit;
 		}
 	}
