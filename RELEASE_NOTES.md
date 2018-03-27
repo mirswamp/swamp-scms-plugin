@@ -1,4 +1,14 @@
 ------------------------
+swamp-scms-plugin version releases/1.3.5 (Tue Mar 27 15:00:41 CST 2018)
+------------------------
+Security update to the swamp-scms-plugin to improve
+SWAMP session credential handling.
+
+- java-cli-1.4.1 upgrade to enhance swamp session credential protection.
+
+- swamp session is logged out after a --verify run.
+
+------------------------
 swamp-scms-plugin version releases/1.3.4 (Fri Mar 12 12:40:41 CST 2018)
 ------------------------
 - Updated the list of build-systems.
