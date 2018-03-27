@@ -182,7 +182,7 @@ sub ProcessOptions  {
 			'recover'	=> 0,
 			'verify'	=> 0,
 			'verbose'	=> 0,
-			'trace'		=> 0,
+			'trace'		=> 0,	## trace execution
 			'time'		=> 0,	## print time info
 			);
 
@@ -221,7 +221,7 @@ sub ProcessOptions  {
 			"verify",			## config files vs swamp
 			"verbose",
 			"trace",			## execution trace
-			"time",				## time trace
+			"time:1",			## time trace
 			"old_cli|old-cli",		## USERNAME vs username
 			"JAVA_HOME|java-home",		## java version
 				);
@@ -379,6 +379,10 @@ sub ProcessOptions  {
 
 		}
 		print STDERR "$n error(s) found in configuration.\n";
+
+		if ($logged_in) {
+			SwampCli(\%options, "logout", "--quiet");
+		}
 
 		print_exec_time(\%options);
 
