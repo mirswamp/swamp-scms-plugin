@@ -42,7 +42,7 @@ use Time::HiRes qw(time);		## uncomment for > sec res in timing
 #@PERL-USE-END@
 
 
-my $versionString = "1.3.4";
+my $versionString = "1.3.5";
 
 ## XXX no reason for these to be alphabetical; functional groupings
 ## would be better and reflect how the SWAMP works & allow cross-check.
