@@ -89,7 +89,7 @@ For example, to add the SWAMP hook to an existing git workspace:
 The SWAMP hook must be configured before use. This configuration can be modified by altering the configuration files below. +
 If you are calling the script directly, you can set the values on the command line using `--opt-name`. The value in parentheses is the short command line option name.
 
-=== In SWAMP_Uploader/uploaderConfig.conf
+=== In .git/hooks/SWAMP_Uploader/uploaderConfig.conf
 
 [width="80%",cols="1,3",options="header"]
 |==========================
@@ -169,6 +169,15 @@ Once you have these configurations in place, you can verify them with:
 The program will verify your package is valid for submission without submitting anything to the SWAMP.
 
 === The package.conf File
+
+Package.conf is a file which explains to the SWAMP how to build
+the the software so it can be assessed.
+It contains information similar to that you enter through the
+SWAMP GUI.
+
+The current 'package.conf' file *MUST* be checked into the git workspace
+for an assessment to be run correctly by the swamp-scms-plugin.
+The last checked in version will be used for an assessment run.
 
 There must be a package.conf file inside your git repository, location specified by the configuration file. +
 This file contains details on how the SWAMP should handle your package. +
