@@ -164,7 +164,7 @@ Once you have these configurations in place, you can verify them with:
 
 [source,bash]
 ----
-hooks/SWAMP_Uploader/uploadPackage.pl --verify
+./.git/hooks/SWAMP_Uploader/uploadPackage.pl --verify
 ----
 The program will verify your package is valid for submission without submitting anything to the SWAMP.
 
@@ -196,7 +196,14 @@ Here is a full list of the valid options for configuration: +
 |build-target | Build target
 |android-sdk-target | Android Target String
 |==========================
-.package-language can be any of these languages:
+.package-language 
+
+To examine the current set of languages supported by the plugin
+or the SWAMP, run the plugin with --print-languages:
+
+	./.git/hooks/SWAMP_Uploader/uploadPackage.pl --print-languages
+
+For example:
 -----
 C
 C++
@@ -209,7 +216,14 @@ Python-2
 Python-3
 Ruby
 -----
-.build-sys can be any of these systems:
+.build-sys
+
+To examine the current set of build systems supported by the plugin
+or the SWAMP, run the plugin with --print-build-sys:
+
+	./.git/hooks/SWAMP_Uploader/uploadPackage.pl --print-build-sys
+
+For example:
 ------
 android+ant
 android+ant+ivy
@@ -230,17 +244,22 @@ python-distutils
 ------
 
 == Using the SWAMP Hook
-Depending on your configurations, your project will be automatically uploaded and assessed to the SWAMP after every commit / push.
+Depending on how you configured the plugin, the package
+will be automatically uploaded and assessed to the SWAMP
+after every commit or push.
+
+Login to the SWAMP you are using to view the status of the
+assessments and to view or download the results.
 
 == Updating the SWAMP Hook
 To update the hook's components to a newer version, you will
 need to update the software base that the hook was installed from.
 
-You can do this either with 'git pull origin' on a checked out git
-workspace, or by downloaded a new archive from github.
+You can do this either with 'git pull origin' on a checked out
+swamp-scms-plugin workspace, or by downloading a new archive from github.
 
 Once a new version of the hook as been installed, you will need
-to visit each git workspace which uses the hook, and update the
+to visit each git workspace that uses the hook, and update the
 hook components in that workspace
 
 For example, to update the hook in a git workspace
