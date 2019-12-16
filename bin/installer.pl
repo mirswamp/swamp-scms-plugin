@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #  SWAMP SCMS Hooks
 #
-#  Copyright 2016-2018	Jared Sweetland, Vamshi Basupalli,
+#  Copyright 2016-2019	Jared Sweetland, Vamshi Basupalli,
 #  			James A. Kupsch, Josef "Bolo" Burger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
