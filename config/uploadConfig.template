@@ -197,7 +197,7 @@ new-package-dir=./
 #tool=Parasoft C/C++test,GrammaTech CodeSonar,Synopsys Static Analysis (Coverity)
 
 ## java tools
-#tool=checkstyle,error-prone,Findbugs,PMD,OWASP Dependency Check,SpotBugs
+#tool=checkstyle,error-prone,SpotBugs,PMD,OWASP Dependency Check
 
 ## commercial / licensed java tools 
 #tool=Parasoft Jtest,Sonatype Application Health Check
