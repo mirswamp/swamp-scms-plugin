@@ -1,4 +1,22 @@
 ------------------------
+swamp-scms-plugin version releases/1.3.6 (Fri Jan  3 12:00:56 CST 2020)
+------------------------
+Future compatability update with newer swamps.
+
+- java-cli updated to 1.5.8;  This future-proofs the scms plugin
+  for future updates to the SWAMP system, which will use
+  additional 2xx HTTP status reports for success.  This update is
+  backward compatible with existing SWAMP servers.
+
+- update the demonstration configuration to no longer include
+  findbugs.   findbugs is no longer available in current SWAMPs;
+  it has been replaced with spotbugs.
+  If you are using an older swamp with findbugs, it will continue
+  to work with your existing config files.   If you have a
+  newer swamp, you will need to either remove 'findbugs' and then
+  add 'spotbugs' to a java package's SCMS package configuration.
+
+------------------------
 swamp-scms-plugin version releases/1.3.5 (Tue Mar 27 15:00:41 CST 2018)
 ------------------------
 Security update to the swamp-scms-plugin to improve
