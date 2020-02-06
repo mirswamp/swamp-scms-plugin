@@ -1,0 +1,40 @@
+To update the scms plugin to incorporate a new
+version of the java-cli...
+
+1) get the new version of the java-cli; Either...
+
+	1) checkout and build the java-cli; see
+	00README in java-cli for simple instructions.
+
+	2) get the distribution of the java-cli with
+	dependencies from the github archive page.
+
+
+2) Install it into the scms plugin workspace:
+
+	copy the versioned file into the non-versioned
+	name in the swamp-scms plugin dir:
+
+	1) For example, for installing from java-cli in
+	the parent dir of the scms plugin ....
+
+	java_cli_dir=../java_cli
+	java_cli_ver=1.5.8
+
+	java_cli=$java_cli_dir/target/java-cli-${java_cli_ver}-jar-with-dependencies.jar
+
+	ls -l $java_cli
+
+	cp -p $java_cli bin/swamp-cli-jar-with-dependencies.jar
+
+
+	2) If working with a github download, copy it into the file
+	with the same name in the scms plugin build dir.
+
+
+3) After testing, Update the version numbers, commit files as needed,
+   create tags, etc before pushing back to origin.
+	
+	RELEASE_NOTES.md
+	README.adoc
+	bin/swamp-cli-jar-with-dependencies.jar
