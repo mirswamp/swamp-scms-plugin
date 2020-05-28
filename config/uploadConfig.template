@@ -197,7 +197,14 @@ new-package-dir=./
 #tool=Parasoft C/C++test,GrammaTech CodeSonar,Synopsys Static Analysis (Coverity)
 
 ## java tools
-#tool=checkstyle,error-prone,SpotBugs,PMD,OWASP Dependency Check
+##tool=checkstyle,error-prone,SpotBugs,PMD,OWASP Dependency Check
+
+## OWASP Dependency Check is optional on swamp in a box, which can cause
+## this to fail ...so, default configuration '^#tool=checkstyle' 
+## is now this.   Unfortunate, but necessary for smooth usage in
+## stock supported environments.
+#tool=checkstyle,error-prone,SpotBugs,PMD
+
 
 ## commercial / licensed java tools 
 #tool=Parasoft Jtest,Sonatype Application Health Check
