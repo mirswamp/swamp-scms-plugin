@@ -1,4 +1,18 @@
 ------------------------
+swamp-scms-plugin version releases/1.3.7 (Fri May 29 11:11:11 CST 2020)
+------------------------
+- Update embedded java-cli to 1.5.9
+  This adds support for "Finished with Warnings" to the java-cli.
+  There is no functional change to the SCMS plugin; it relies
+  upon checking assessments and viewing results to the SWAMP GUI.
+  This would only affect no-build jobs.
+
+- Change upload Config template to turn off Dependency CHeck by
+  default.  Dependency Check is optional software, which may not be
+  available on a particular SWAMP .. which would cause a "failure"
+  if used.   Now it must be configured by the user, if available.
+
+------------------------
 swamp-scms-plugin version releases/1.3.6 (Fri Jan  3 12:00:56 CST 2020)
 ------------------------
 Future compatability update with newer swamps.
